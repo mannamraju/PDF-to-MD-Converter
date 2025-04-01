@@ -1,185 +1,204 @@
-```markdown
 # Application Observability for Edge-Deployed Solutions
 
 ## Overview
+
 ### Background
 In modern distributed systems, observability is crucial for maintaining the health, performance, and reliability of edge-deployed solutions. This document outlines design choices for implementing observability at the edge, addressing the following business objectives:
 
-- **Proactive Issue Detection and Easier Root Cause Analysis**: The observability platform will enable the identification and resolution of potential issues before they impact users. Downtime can be minimized, ensuring SLOs and SLIs are consistently met for edge-deployed solutions.
+- **Proactive Issue Detection and Easier Root Cause Analysis**: The observability platform will enable the identification and resolution of potential issues before they impact users. By quickly pinpointing the root cause of problems, downtime can be minimized, ensuring that service level objectives (SLOs) and service level indicators (SLIs) are consistently met for edge-deployed solutions.
 - **Informed Decision-Making**: By leveraging metrics, logs, and traces collected from edge devices, stakeholders can make data-driven decisions regarding system improvements and resource allocation.
 - **Improved Operational Efficiency**: Centralize monitoring for all HCI clusters and applications in a single unified platform to enhance operational efficiency.
 - **Integration of Deployment Components**: Seamlessly integrate deployment components such as GitOps and CI/CD with the central observability platform.
 - **Compatibility with Key Technologies**: Ensure compatibility with Stack HCI, Kubernetes, GitOps-based fleet management, and alignment with Microsoft's observability tech stack strategy.
-- **Optimal Data Flow from Edge to Cloud**: Optimize telemetry flow from edge to the observability platform, considering bandwidth constraints.
-- **Offline Capabilities**: Ensure resilience to network outages, with automatic data collection resumption post-network restoration.
+- **Optimal Data Flow from Edge to Cloud**: Optimize telemetry flow from edge to observability platform considering bandwidth constraints.
+- **Offline Capabilities**: The observability platform should be resilient to network outages, automatically resuming data collection and transmission once connectivity is restored to prevent data loss during downtime.
 
 ---
 
 ## Pillars of Observability
 The purpose of an observability system is to collect, process, and export signals. These signals typically encompass three main components:
+- **Metrics**: Quantitative data measuring system performance and health, such as CPU usage, memory consumption, request rates, and error rates.
+- **Logs**: Detailed, timestamped records of events and actions within a system, providing insights into behavior and application state.
+- **Traces**: End-to-end records of requests or transactions propagating through different services and components in a distributed system, identifying performance bottlenecks and dependencies.
 
-- **Metrics**: Quantitative data measuring aspects like CPU usage, memory consumption, request rates, and error rates.
-- **Logs**: Detailed, timestamped records of events and actions providing insights into application and infrastructure behavior.
-- **Traces**: End-to-end records of requests or transactions identifying performance bottlenecks and dependencies.
-
-For more details, refer to the [Observability - Engineering Fundamentals Playbook](https://learn.microsoft.com/en-us/azure/azure-monitor/overview).
+For detailed differences between metrics, logs, and traces, refer to the [Observability - Engineering Fundamentals Playbook](https://learn.microsoft.com/).
 
 ---
 
 ## Edge Observability Design
-In an edge system, telemetry transmission to the cloud requires:
-1. Instrumented systems.
-2. An agent to gather and transmit telemetry data.
+
+In an edge system, the ability to send telemetry to the cloud for analysis requires:
+1. **Instrumented Systems**
+2. **An Agent**: Facilitates gathering and transmitting telemetry data to the cloud.
 
 ### Data Sources
-Options evaluated for telemetry transmission:
-1. **Azure Monitor Container Insights**: Microsoft solution for collecting telemetry from edge container systems.
-2. **OpenTelemetry Collector**: Vendor-agnostic open-source tool for telemetry data collection, processing, and export.
-3. **Azure Monitor Edge Pipeline (Preview)**: Similar to OpenTelemetry but not recommended due to preview status.
+Options evaluated for sending telemetry back to the cloud:
 
-| Feature                  | Azure Monitor Container Insights | OpenTelemetry Collector |
-|--------------------------|-----------------------------------|--------------------------|
-| Deployment Ease          | Easy: Enabled as an extension.   | Medium: Requires YAML configuration. |
-| Multi-cloud, On-premise  | Supported in Azure only.         | Supported.              |
-| Storage                  | Azure Monitor.                  | Multiple backends including Application Insights, Prometheus, etc. |
-| Offline Storage          | Not supported.                  | Disk-based queuing supported. |
-| Instrumentation          | Azure SDK.                      | OpenTelemetry SDK with flexibility. |
-| Managed Identity Support | Natively supported.             | Limited. Requires AAD Proxy. |
+1. **Azure Monitor Container Insights**:
+   - First-party solution from Microsoft.
+   - Collects telemetry from edge containers systems.
+   - Delivers to Azure Monitor services depending on signal type.
+   
+2. **OpenTelemetry Collector**:
+   - Open-source, vendor-agnostic component.
+   - Collects, processes, and exports telemetry data.
 
-**Recommendation**: OpenTelemetry is preferred for its reliability, flexibility, and alignment with Microsoft's long-term strategy.
+3. **Azure Monitor Edge Pipeline (Preview)**:
+   - First-party solution for building data ingestion pipelines.
+   - Similar to OpenTelemetry Collector but not considered due to preview status.
+
+| **Comparison** | **Container Insights** | **OpenTelemetry** |
+|----------------|-------------------------|--------------------|
+| Ease of Deployment | Easy, enabled as an extension | Medium, requires YAML configuration |
+| Supported Environments | Azure-only | Multi-cloud, hybrid |
+| Data Collection | Automatic for predefined resources | Flexible, manual or automatic instrumentation |
+| Storage | Azure Monitor | Multiple backends (e.g., Application Insights, Prometheus) |
+
+**Recommendation**: Based on assessment criteria such as network interruptions and bandwidth limitations, OpenTelemetry is recommended due to:
+- Reliable telemetry transport during outages.
+- Flexibility in filtering metrics, logs, and traces.
+- Alignment with Microsoft's observability strategy.
 
 ---
 
 ## Data Platform
-A data platform aggregates, analyzes, and visualizes telemetry data. Key Azure Monitor components include:
-- **Azure Monitor Metrics**: Time-series database.
-- **Azure Managed Prometheus**: PromQL interface.
-- **Log Analytics**: Powered by Azure Data Explorer.
-- **Application Insights**: Correlation capabilities.
+A data platform aggregates, analyzes, and visualizes telemetry data for insights into system performance, health, and operational efficiency. This engagement will utilize Azure Monitor technologies.
 
----
-
-## Visualization
-Visualization platforms translate telemetry data into actionable insights. Platforms considered include Azure Monitor Workbooks, Grafana, and Power BI.
-
-For detailed comparisons, refer to [Azure Monitor best practices](https://learn.microsoft.com/en-us/azure/azure-monitor/overview).
+### Visualization
+Visualization platforms translate complex telemetry data into actionable insights:
+- **Azure Managed Prometheus**: PromQL interface for Azure Monitor Metrics.
+- **Log Analytics**: Powerful analysis engine with KQL query language.
+- **Application Insights**: Correlation for developers.
+- **Grafana**: Multi-data source integration with popular plugins.
 
 ---
 
 ## Proposed Development Plan
 
 ### Architecture
-1. Deploy an OpenTelemetry Collector instance per SDLC environment.
-2. Configure Azure Monitor Agent (AMA) to pull telemetry from OpenTelemetry Collector’s Prometheus.
-3. Deploy Kubernetes services to enable OTLP instrumented workloads.
+1. Deploy an OpenTelemetry Collector instance per environment (SDLC).
+2. Configure Azure Monitor Agent (AMA) to pull telemetry from OpenTelemetry Collector's Prometheus.
+3. Deploy Kubernetes service for OTLP instrumented workloads to send telemetry.
 
 ---
 
 ## OpenTelemetry Collector Pipeline
-The OpenTelemetry pipeline consists of:
-- **Receivers**: Collect telemetry data (e.g., OTLP Receiver, Kubelet Stats Receiver).
-- **Processors**: Transform and batch telemetry data (e.g., Batch Processor).
-- **Exporters**: Export telemetry to backends (e.g., Azure Monitor Exporter, Prometheus Exporter).
 
-### Extensions
-- **File Storage**: Persist state to the local file system for reliability.
+### Receivers
+- **OTLP Receiver**: Receives data via gRPC or HTTP using OTLP format.
+- **Kubelet Stats Receiver**: Metrics for node, pod, container, and volume.
+- **Kubernetes Cluster Receiver**: Cluster-level metrics and events.
+
+### Processors
+- **Batch Processor**: Compresses data, reduces outgoing connections.
+
+### Exporters
+- **Azure Monitor Exporter**: Sends logs, traces, and metrics to Application Insights.
+- **Prometheus Exporter**: Exports data in Prometheus format for scraping by Prometheus server.
 
 ---
 
 ## Estimating Storage Requirements
 
 ### Metrics
-Kubelet Stats Receiver broadcasts a payload every 20 seconds. Approximate storage:
-- 1 KB per payload.
-- 5 MB of data/day/workload.
+Example calculation for Kubelet Stats Receiver:
+1 KB payload every 20 seconds. For 1 hour:
+```
+Payload size * Frequency * Duration = 1 KB * (3600/20) = 180 KB/hour
+```
 
-### Logs and Traces
+**Daily Storage**: Round up to 5 MB/workload/day.
+
+### Logs & Traces
 Estimated at 1 GB/day.
-
-### Configuration
-Recommended:
-- Max outage = 1 day.
-- PVC storage minimum = 10 GB/day.
-- Retry configurations to handle failures.
 
 ---
 
 ## Deployment and Deployment Artifacts
-OpenTelemetry Collector will be deployed using GitOps-based workflow. Deployment requirements:
-1. Attach PersistentVolumeClaim to each instance.
-2. Ensure service reachability via HTTP/gRPC.
+OpenTelemetry Collector deployed using GitOps-based workflow. PersistentVolumeClaim (PVC) will ensure local disk caching.
 
 ---
 
-## Data Retention
-
-| Data Type | Retention Period | Notes                     |
-|-----------|------------------|---------------------------|
-| Metrics   | 93 days          | Prometheus metrics stored for 18 months. |
-| Logs & Traces | 93 days       | Configurable retention. |
+## Merging Azure IoT Operations Configuration
+Unified configuration combining AIO telemetry and AMA Prometheus scraping.
 
 ---
 
 ## Alerting
-Azure Monitor Alerts will notify users based on predefined rules. Types of alerts:
-- Metric alerts.
-- Log search alerts.
-- Prometheus alerts.
+**Types of Alerts**:
+- Metric alerts: Azure Monitor Metrics, Application Insights.
+- Log search alerts: Log Analytics Workspace.
+- Prometheus alerts: PromQL rules.
 
----
-
-## Communication Mechanism
-Alerts will be sent via SMS and email to designated recipients.
+**Alert Criteria**:
+- Fatal issues
+- SQL Server connectivity issues
+- Blob Storage connectivity issues
 
 ---
 
 ## Instrumentation in Workloads
-Workloads will be identified using:
-- `plant_id-environment-application_name`
-- `service.version`
-
-Environment variables:
+Applications implementing OTLP instrumentation must retrieve values via environment variables:
 - `OTEL_SERVICE_NAME`
 - `OTEL_RESOURCE_ATTRIBUTES`
 
 ---
 
 ## Control Tower
-Control Tower uses Azure Table Storage for checkpointing. Proposed enhancement:
-- Publish a custom metric `finished_execution` to track successful uploads.
+Control Tower checkpoints implemented in Azure Table Storage will be replaced with a custom metric `finished_execution`.
 
 ---
 
-## Service-level Indicators
-A Grafana dashboard will provide fleet-wide visibility into operations, with filtering options for location and environment.
+## Service-Level Indicators
+A Grafana dashboard will provide fleet-wide visibility into Control Tower operations. Filtering options for location and environment will be introduced.
 
 ---
 
 ## Capacity Requirements
 
-| Application | Min CPU | Min Memory | Max CPU | Max Memory |
-|-------------|---------|------------|---------|------------|
-| OpenTelemetry Collector | 500m     | 1024Mi   | 2000m     | 2048Mi   |
-| Azure Monitoring Agent  | 405m     | 1100Mi   | 14100m    | 29700Mi  |
+### CPU & Memory
+Empirical suggestions based on telemetry production rate and queue size.
 
 ---
 
-## Disk Space
-Each OpenTelemetry instance requires 10 GB of disk space for telemetry data storage in case of disconnection.
+### Disk Space
+Each OpenTelemetry instance requires 10 GB of disk space for one day of telemetry storage during network disconnection.
 
 ---
 
 ## Images
-![Page 1](page_1.png)
-![Page 2](page_2.png)
-![Page 3](page_3.png)
-![Page 4](page_4.png)
-![Page 5](page_5.png)
-![Page 6](page_6.png)
-![Page 7](page_7.png)
-![Page 8](page_8.png)
-![Page 9](page_9.png)
-![Page 10](page_10.png)
-![Page 11](page_11.png)
-```
-This markdown format preserves the structure and formatting of the content while integrating extracted text and images.
+The document references the following image files for visual representation:
+- `image_1.png`
+- `image_2.png`
+- `image_2_1.png`
+- `image_2_2.png`
+- `image_2_3.png`
+- `image_3.png`
+- `image_3_4.png`
+- `image_3_5.png`
+- `image_4.png`
+- `image_4_6.png`
+- `image_4_7.png`
+- `image_5.png`
+- `image_5_8.png`
+- `image_5_9.png`
+- `image_6.png`
+- `image_6_10.png`
+- `image_6_11.png`
+- `image_6_12.png`
+- `image_6_13.png`
+- `image_6_14.png`
+- `image_6_15.png`
+- `image_7.png`
+- `image_7_16.png`
+- `image_7_17.png`
+- `image_8.png`
+- `image_9.png`
+- `image_10.png`
+- `image_10_18.png`
+- `image_10_19.png`
+- `image_11.png`
+
+---
+
+**Credits**: [Azure Monitor Overview](https://learn.microsoft.com/en-us/azure/azure-monitor/overview)

@@ -1,59 +1,58 @@
 from pathlib import Path
 import logging
-from typing import List, Dict
+from typing import Optional
+from .config import api_config
 from .agents.pdf_extractor import PDFExtractorAgent
 from .agents.md_validator import MDValidatorAgent
-from .config import api_config
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 class AIProcessor:
     """Coordinates the AI agents for PDF processing."""
     
-    def __init__(self, pdf_path: str, output_dir: str = "output"):
+    def __init__(self, pdf_path: str):
+        """Initialize the processor with the PDF path."""
         self.pdf_path = Path(pdf_path)
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(exist_ok=True)
+        self.config = api_config.get_config()
         
-        # Configure logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler(self.output_dir / "conversion.log"),
-                logging.StreamHandler()
-            ]
-        )
-        self.logger = logging.getLogger(__name__)
-        
-        # Initialize agents with API configuration
-        config = api_config.get_config()
-        self.extractor = PDFExtractorAgent(config)
-        self.validator = MDValidatorAgent(config)
+        # Initialize agents
+        self.extractor = PDFExtractorAgent(self.config)
+        self.validator = MDValidatorAgent(self.config)
     
-    def process(self) -> str:
-        """Process a PDF file using AI agents."""
+    def process(self) -> Optional[Path]:
+        """Process the PDF and generate markdown output."""
         try:
-            self.logger.info(f"Starting PDF processing: {self.pdf_path}")
+            logger.info(f"Starting PDF processing: {self.pdf_path}")
             
-            # Extract content
-            self.logger.info("Extracting content from PDF...")
+            # Extract content from PDF
+            logger.info("Extracting content from PDF...")
             markdown_content = self.extractor.extract_content(str(self.pdf_path))
             
-            # Validate markdown
-            self.logger.info("Validating generated markdown...")
-            is_valid, validation_report = self.validator.validate_markdown(str(self.pdf_path), markdown_content)
+            # Get original text for validation
+            original_text = self.extractor.extract_text(str(self.pdf_path))
             
-            if not is_valid:
-                self.logger.warning("Markdown validation failed. Check the log for details.")
-                self.logger.info(f"Validation report: {validation_report}")
+            # Validate the generated markdown
+            logger.info("Validating generated markdown...")
+            validation_result = self.validator.validate_markdown(markdown_content, original_text)
             
-            # Save markdown file
-            output_file = self.output_dir / f"{self.pdf_path.stem}.md"
-            with open(output_file, 'w', encoding='utf-8') as f:
-                f.write(markdown_content)
+            # Log validation results
+            if "Critical Issues Found:" in validation_result:
+                logger.warning("Validation found issues:\n%s", validation_result)
+            else:
+                logger.info("Validation successful")
             
-            self.logger.info(f"Successfully processed PDF. Output saved to: {output_file}")
-            return str(output_file)
+            # Save the markdown content
+            output_file = self.pdf_path.parent / "output" / f"{self.pdf_path.stem}.md"
+            output_file.write_text(markdown_content)
+            logger.info(f"Successfully processed PDF. Output saved to: {output_file}")
+            
+            return output_file
             
         except Exception as e:
-            self.logger.error(f"Error processing PDF: {str(e)}")
-            raise 
+            logger.error(f"Error processing PDF: {str(e)}")
+            return None 
