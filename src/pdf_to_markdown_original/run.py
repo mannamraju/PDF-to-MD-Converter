@@ -1,29 +1,40 @@
 #!/usr/bin/env python3
+import os
 import sys
 from pathlib import Path
-from src.pdf_to_markdown.processor import PDFProcessor
+from src.pdf_to_markdown_original.processor import PDFProcessor
 
 def get_pdf_path() -> str:
     """Get PDF file path from user input."""
     while True:
         print("\nPDF to Markdown Converter")
         print("=" * 30)
-        path = input("\nEnter the path to your PDF file: ").strip()
+        print("\nPlease enter the full path to your PDF file.")
+        print("Example: /Users/username/Documents/document.pdf")
+        print("Press Enter to cancel.")
+        path = input("\nPDF file path: ").strip()
         
         if not path:
-            print("\nPath cannot be empty. Please try again.")
-            continue
+            print("\nOperation cancelled by user.")
+            sys.exit(0)
             
         path = str(Path(path).expanduser())
         if not Path(path).exists():
-            print(f"\nFile not found: {path}")
+            print(f"\nError: File not found: {path}")
+            print("Please check the path and try again.")
             continue
             
         if not path.lower().endswith('.pdf'):
-            print("\nFile must be a PDF. Please try again.")
+            print("\nError: File must be a PDF.")
+            print("Please select a PDF file and try again.")
             continue
             
-        return path
+        print(f"\nSelected file: {path}")
+        confirm = input("Press Enter to confirm or 'n' to change: ").strip().lower()
+        
+        if confirm != 'n':
+            return path
+        print("\nLet's try again...")
 
 def get_output_dir() -> str:
     """Get output directory from user input."""

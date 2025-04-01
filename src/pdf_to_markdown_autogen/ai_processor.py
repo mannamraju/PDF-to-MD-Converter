@@ -1,13 +1,15 @@
 from pathlib import Path
 import logging
 from typing import List, Dict
-from pdf_to_markdown_autogen.agents import PDFExtractorAgent, MDValidatorAgent
-from pdf_to_markdown_autogen.config import api_config
+from .agents.pdf_extractor import PDFExtractorAgent
+from .agents.md_validator import MDValidatorAgent
+from .config import api_config
 
 class AIProcessor:
     """Coordinates the AI agents for PDF processing."""
     
-    def __init__(self, output_dir: str = "output"):
+    def __init__(self, pdf_path: str, output_dir: str = "output"):
+        self.pdf_path = Path(pdf_path)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         
@@ -23,29 +25,29 @@ class AIProcessor:
         self.logger = logging.getLogger(__name__)
         
         # Initialize agents with API configuration
-        config_list = [api_config.get_config()]
-        self.extractor = PDFExtractorAgent(config_list)
-        self.validator = MDValidatorAgent(config_list)
+        config = api_config.get_config()
+        self.extractor = PDFExtractorAgent(config)
+        self.validator = MDValidatorAgent(config)
     
-    def process(self, pdf_path: str) -> str:
+    def process(self) -> str:
         """Process a PDF file using AI agents."""
         try:
-            self.logger.info(f"Starting PDF processing: {pdf_path}")
+            self.logger.info(f"Starting PDF processing: {self.pdf_path}")
             
             # Extract content
             self.logger.info("Extracting content from PDF...")
-            markdown_content = self.extractor.extract_content(pdf_path)
+            markdown_content = self.extractor.extract_content(str(self.pdf_path))
             
             # Validate markdown
             self.logger.info("Validating generated markdown...")
-            is_valid, validation_report = self.validator.validate_markdown(pdf_path, markdown_content)
+            is_valid, validation_report = self.validator.validate_markdown(str(self.pdf_path), markdown_content)
             
             if not is_valid:
                 self.logger.warning("Markdown validation failed. Check the log for details.")
                 self.logger.info(f"Validation report: {validation_report}")
             
             # Save markdown file
-            output_file = self.output_dir / f"{Path(pdf_path).stem}.md"
+            output_file = self.output_dir / f"{self.pdf_path.stem}.md"
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(markdown_content)
             
