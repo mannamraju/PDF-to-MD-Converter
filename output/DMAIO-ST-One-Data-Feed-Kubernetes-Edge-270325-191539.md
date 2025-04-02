@@ -123,21 +123,5 @@ managing the system. These roles include:
    a. Source Repository  
    b. Config Repository  
    c. GitOps Repository  
+![Ops and Monitoring](Ops_and_Monitoring.png) 
 
-```
- RabbitMQ Docker Community rabbitmq Public khazeus2controltowecacr001.azur
-ecr.io
-Ingest Service ST-One --- Private khazeus2controltowecacr001.azur
-ecr.io
-PostgreSQL Timescale timescale/timescal
-edb-haPublic khazeus2controltowecacr001.azur
-ecr.io
-Mosquitto Eclipse Foundation eclipse-mosquitto Public khazeus2controltowecacr001.azur
-ecr.io
-AIO MQ Microsoft --- Public mcr.microsoft.com
-AIO Data Processor & 
-Cloud ConnectorMicrosoft --- Public mcr.microsoft.comKubernetes 
-ComponentMaintainer Image Public/Private Container Registry
-```
-
-(End of PDF content)
