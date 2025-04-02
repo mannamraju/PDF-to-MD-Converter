@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 import time
 import logging
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -19,27 +20,63 @@ class PDFExtractorAgent:
         self.config = config
         self.agent = autogen.AssistantAgent(
             name="pdf_extractor",
-            system_message="""You are a PDF extraction specialist. Your role is to:
-            1. Extract ALL text exactly as it appears in the PDF, preserving every word and section
-            2. Convert tables to markdown format using | and - characters
-            3. Handle image extraction and placement
-            4. Generate markdown that matches the original document structure exactly
-            5. Do not summarize or modify the content in any way
-            6. Ensure no content is omitted or lost during conversion
-            7. Preserve all formatting, including bold, italic, and other text styles
-            8. Maintain exact section hierarchy and document structure""",
+            system_message="""You are a PDF content extraction specialist. Your role is to:
+            1. Extract text content from PDFs while preserving structure and formatting
+            2. Handle tables, lists, and special characters accurately
+            3. Maintain the original document's hierarchy and organization
+            4. Preserve all formatting and styling information
+            5. Extract and handle images appropriately
+            6. Ensure no content is lost or modified
+            7. Keep the original text exactly as it appears
+            8. Maintain document structure and layout""",
             llm_config=config
         )
+        self.last_request_time = 0
+        self.min_request_interval = 3.0  # Increased minimum interval between requests
+        self.max_validation_attempts = 3  # Maximum number of validation attempts per chunk
+        self.rate_limit_count = 0  # Track rate limit occurrences
+        self.last_rate_limit_time = 0  # Track last rate limit occurrence
+        self.chunk_size = 2000  # Smaller chunk size for processing
+        self.max_retries = 5  # Increased max retries
+        self.base_delay = 60  # Base delay for rate limit handling
     
-    def _handle_rate_limit(self, error: Exception, max_retries: int = 3) -> None:
-        """Handle rate limit errors with exponential backoff."""
+    def _wait_for_rate_limit(self):
+        """Implement token bucket algorithm for rate limiting with dynamic intervals."""
+        current_time = time.time()
+        time_since_last_request = current_time - self.last_request_time
+        
+        # Adjust interval based on rate limit history
+        if self.rate_limit_count > 0:
+            time_since_last_rate_limit = current_time - self.last_rate_limit_time
+            if time_since_last_rate_limit < 300:  # Within 5 minutes of last rate limit
+                self.min_request_interval *= 1.5  # Increase interval by 50%
+                logger.info(f"Rate limit history detected. Increased interval to {self.min_request_interval:.2f} seconds")
+        
+        if time_since_last_request < self.min_request_interval:
+            sleep_time = self.min_request_interval - time_since_last_request
+            logger.info(f"Rate limiting: waiting {sleep_time:.2f} seconds")
+            time.sleep(sleep_time)
+        
+        self.last_request_time = time.time()
+    
+    def _handle_rate_limit(self, error: Exception) -> None:
+        """Handle rate limit errors with exponential backoff and jitter."""
         if "429" in str(error):
-            retry_delay = 60  # Start with 60 seconds
-            for attempt in range(max_retries):
-                logger.info(f"Rate limit hit. Waiting {retry_delay} seconds before retry {attempt + 1}/{max_retries}")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-            raise Exception(f"Rate limit exceeded after {max_retries} retries")
+            self.rate_limit_count += 1
+            self.last_rate_limit_time = time.time()
+            
+            for attempt in range(self.max_retries):
+                # Calculate delay with exponential backoff and jitter
+                delay = self.base_delay * (2 ** attempt)  # Exponential backoff
+                jitter = random.uniform(0, delay * 0.1)  # 10% jitter
+                total_delay = delay + jitter
+                
+                logger.info(f"Rate limit hit. Waiting {total_delay:.2f} seconds before retry {attempt + 1}/{self.max_retries}")
+                time.sleep(total_delay)
+            
+            # Reset rate limit count after successful retries
+            self.rate_limit_count = 0
+            raise Exception(f"Rate limit exceeded after {self.max_retries} retries")
         raise error
     
     def extract_text(self, pdf_path: str) -> List[str]:
@@ -107,43 +144,48 @@ class PDFExtractorAgent:
         
         return images
     
-    def process_content(self, text_content: List[str], images: List[Tuple[str, str]], preserve_all: bool = True) -> str:
-        """Process extracted content into markdown format."""
-        # Prepare content for processing
-        processing_prompt = f"""Convert this PDF content to markdown format.
-        Requirements:
-        1. Preserve ALL text exactly as it appears
-        2. Convert tables to markdown format using | and - characters
-        3. Maintain exact document structure and hierarchy
-        4. Do not summarize or modify any content
-        5. Preserve all formatting and styles
-        6. Ensure no content is omitted
-        
-        Original text:
-        {text_content}
-        
-        Images (base64 encoded):
-        {images}
-        
-        Generate markdown that preserves all content exactly."""
+    def _process_chunk(self, chunk: str) -> str:
+        """Process a single chunk of text with rate limit handling."""
+        self._wait_for_rate_limit()
         
         try:
-            # Get markdown content from the agent
-            markdown_content = self.agent.generate_reply(
+            response = self.agent.generate_reply(
                 messages=[{
                     "role": "user",
-                    "content": processing_prompt
+                    "content": f"Convert this PDF content to markdown while preserving all formatting and structure:\n\n{chunk}"
                 }]
             )
-            return markdown_content
+            return response
         except Exception as e:
             self._handle_rate_limit(e)
     
-    def extract_content(self, pdf_path: str, preserve_all: bool = True) -> str:
-        """Extract and process content from PDF."""
-        # Extract text and images
-        text_content = self.extract_text(pdf_path)
-        images = self.extract_images(pdf_path, Path(pdf_path).parent / "output" / "images")
-        
-        # Process content into markdown
-        return self.process_content(text_content, images, preserve_all)
+    def extract_content(self, pdf_path: str) -> str:
+        """Extract content from PDF with chunked processing."""
+        try:
+            # Extract text and images
+            text_content = self.extract_text(pdf_path)
+            images = self.extract_images(pdf_path, Path(pdf_path).parent / "output" / "images")
+            
+            # Process text in chunks
+            chunks = [text_content[i:i + self.chunk_size] for i in range(0, len(text_content), self.chunk_size)]
+            processed_chunks = []
+            
+            for i, chunk in enumerate(chunks):
+                logger.info(f"Processing chunk {i+1}/{len(chunks)}")
+                processed_chunk = self._process_chunk(chunk)
+                processed_chunks.append(processed_chunk)
+            
+            # Combine processed chunks
+            markdown_content = "\n\n".join(processed_chunks)
+            
+            # Add image references
+            if images:
+                markdown_content += "\n\n## Images\n"
+                for i, img_path in enumerate(images):
+                    markdown_content += f"\n![Image {i+1}]({img_path})\n"
+            
+            return markdown_content
+            
+        except Exception as e:
+            logger.error(f"Error extracting content: {str(e)}")
+            raise

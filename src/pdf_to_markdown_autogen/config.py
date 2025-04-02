@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from typing import Dict, Any
 
 # Load environment variables from .env file
 env_path = Path(__file__).parent.parent.parent / '.env'
@@ -35,10 +36,7 @@ class APIConfig:
         self.validate()  # Validate before returning config
         
         # Base config for both providers
-        config = {
-            'temperature': float(os.getenv('AUTOGEN_TEMPERATURE', '0.7')),
-            'max_tokens': int(os.getenv('AUTOGEN_MAX_TOKENS', '4096')),
-        }
+        config = {}
         
         # Add provider-specific config
         if self.provider == 'openai':
@@ -62,6 +60,11 @@ class APIConfig:
     def is_azure(self):
         """Check if using Azure OpenAI."""
         return self.provider == 'azure'
+
+def get_config() -> Dict[str, Any]:
+    """Get configuration from environment variables using APIConfig."""
+    config = api_config.get_config()
+    return {"config_list": [config]}
 
 # Create a global instance
 api_config = APIConfig() 
