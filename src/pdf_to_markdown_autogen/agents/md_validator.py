@@ -4,7 +4,8 @@ import re
 import time
 import logging
 import random
-from openai import AzureOpenAI
+import os
+from openai import OpenAI, AzureOpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -14,14 +15,23 @@ class MDValidatorAgent:
     def __init__(self, config: Dict[str, Any]):
         """Initialize the markdown validator agent."""
         self.config = config
+        self.api_provider = os.getenv('API_PROVIDER', 'openai').lower()
         
-        # Extract Azure OpenAI configuration
-        azure_config = config.get("config_list", [{}])[0]
-        self.client = AzureOpenAI(
-            api_version=azure_config.get('api_version', '2024-12-01-preview'),
-            azure_endpoint=azure_config.get('azure_endpoint'),
-            api_key=azure_config.get('api_key'),
-        )
+        # Extract API configuration
+        api_config = config.get("config_list", [{}])[0]
+        
+        # Initialize appropriate client
+        if self.api_provider == "azure":
+            self.client = AzureOpenAI(
+                api_version=api_config.get('api_version', '2024-12-01-preview'),
+                azure_endpoint=api_config.get('base_url'),
+                api_key=api_config.get('api_key'),
+            )
+        else:
+            self.client = OpenAI(
+                api_key=api_config.get('api_key'),
+                base_url=api_config.get('base_url')
+            )
         
         self.agent = autogen.AssistantAgent(
             name="md_validator",

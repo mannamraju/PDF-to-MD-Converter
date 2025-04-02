@@ -9,22 +9,40 @@ env_path = Path(__file__).parent.parent.parent / '.env'
 load_dotenv(env_path)
 
 class APIConfig:
-    """Configuration class for Azure OpenAI settings."""
+    """Configuration class for API settings."""
     
     def __init__(self):
-        self.api_key = os.getenv('AZURE_OPENAI_API_KEY')
-        self.azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
-        self.api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
-        self.model = os.getenv('AUTOGEN_MODEL', 'o1')
-        self.deployment = os.getenv('AUTOGEN_MODEL', 'o1')
+        # Get API provider from environment, default to OpenAI
+        self.api_provider = os.getenv('API_PROVIDER', 'openai').lower()
+        self.is_azure = self.api_provider == 'azure'
+        
+        # Common settings
+        self.temperature = float(os.getenv('AUTOGEN_TEMPERATURE', '0.7'))
+        self.max_tokens = int(os.getenv('AUTOGEN_MAX_TOKENS', '40000'))
+        
+        if self.is_azure:
+            # Azure OpenAI settings
+            self.api_key = os.getenv('AZURE_OPENAI_API_KEY')
+            self.base_url = os.getenv('AZURE_OPENAI_ENDPOINT')
+            self.api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
+            self.model = os.getenv('AZURE_OPENAI_MODEL', 'o1')
+        else:
+            # OpenAI settings
+            self.api_key = os.getenv('OPENAI_API_KEY')
+            self.base_url = os.getenv('OPENAI_API_BASE', 'https://api.openai.com/v1')
+            self.model = os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview')
     
     def validate(self):
-        """Validate the Azure OpenAI configuration."""
-        if not self.api_key or not self.azure_endpoint:
-            raise ValueError("AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required")
+        """Validate the API configuration."""
+        if not self.api_key:
+            key_var = 'AZURE_OPENAI_API_KEY' if self.is_azure else 'OPENAI_API_KEY'
+            raise ValueError(f"{key_var} is required")
+        
+        if self.is_azure and not self.base_url:
+            raise ValueError("AZURE_OPENAI_ENDPOINT is required for Azure OpenAI")
     
     def get_config(self):
-        """Get the Azure OpenAI configuration dictionary."""
+        """Get the API configuration dictionary."""
         self.validate()
         
         # Base config for autogen
@@ -32,13 +50,18 @@ class APIConfig:
             "config_list": [{
                 "model": self.model,
                 "api_key": self.api_key,
-                "base_url": self.azure_endpoint,
+                "base_url": self.base_url,
+            }],
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens
+        }
+        
+        # Add Azure-specific settings if using Azure
+        if self.is_azure:
+            config["config_list"][0].update({
                 "api_type": "azure",
                 "api_version": self.api_version
-            }],
-            "temperature": float(os.getenv('AUTOGEN_TEMPERATURE', '1.0')),
-            "max_tokens": int(os.getenv('AUTOGEN_MAX_TOKENS', '40000'))
-        }
+            })
         
         return config
 
@@ -46,17 +69,5 @@ def get_config() -> Dict[str, Any]:
     """Get configuration from environment variables using APIConfig."""
     return api_config.get_config()
 
-def get_azure_config() -> Dict[str, Any]:
-    """Get Azure OpenAI configuration from environment variables."""
-    return {
-        "config_list": [{
-            "model": os.getenv("AZURE_OPENAI_MODEL", "o1"),
-            "api_key": os.getenv("AZURE_OPENAI_API_KEY", "C8W0q3rogNmf0fbaTbl360ZUbq4jfQ8cCii8b0qq6EAOaLpb5BrXJQQJ99ALACYeBjFXJ3w3AAABACOGyYI9"),
-            "azure_endpoint": os.getenv("AZURE_OPENAI_ENDPOINT", "https://maopenai050.openai.azure.com/"),
-            "api_version": os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
-        }],
-        "max_tokens": int(os.getenv("AZURE_OPENAI_MAX_TOKENS", "40000"))
-    }
-
 # Create a global instance
-api_config = APIConfig() 
+api_config = APIConfig()

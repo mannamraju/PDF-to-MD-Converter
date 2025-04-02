@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Test Azure OpenAI connectivity before running the main application."""
+"""Test OpenAI/Azure OpenAI connectivity before running the main application."""
 
 import os
 import sys
 import logging
-from openai import AzureOpenAI
-from pdf_to_markdown_autogen.config import get_azure_config
+from openai import OpenAI, AzureOpenAI
+from pdf_to_markdown_autogen.config import get_config
 
 # Configure logging
 logging.basicConfig(
@@ -15,34 +15,41 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-def test_azure_openai_connection():
-    """Test Azure OpenAI connectivity with a simple completion request."""
+def test_api_connection():
+    """Test API connectivity with a simple completion request."""
     try:
         # Get configuration
-        config = get_azure_config()
-        azure_config = config["config_list"][0]
+        config = get_config()
+        provider_config = config["config_list"][0]
+        api_provider = os.getenv("API_PROVIDER", "azure").lower()
         
-        logger.info("Initializing Azure OpenAI client with configuration:")
-        logger.info(f"  Model: {azure_config['model']}")
-        logger.info(f"  Endpoint: {azure_config['azure_endpoint']}")
-        logger.info(f"  API Version: {azure_config['api_version']}")
+        logger.info(f"Initializing {api_provider.upper()} client with configuration:")
+        logger.info(f"  Model: {provider_config['model']}")
         
-        # Initialize client
-        client = AzureOpenAI(
-            api_version=azure_config["api_version"],
-            azure_endpoint=azure_config["azure_endpoint"],
-            api_key=azure_config["api_key"]
-        )
+        if api_provider == "azure":
+            logger.info(f"  Endpoint: {provider_config['base_url']}")
+            logger.info(f"  API Version: {provider_config['api_version']}")
+            client = AzureOpenAI(
+                api_version=provider_config["api_version"],
+                azure_endpoint=provider_config["base_url"],
+                api_key=provider_config["api_key"]
+            )
+        else:
+            logger.info(f"  Base URL: {provider_config['base_url']}")
+            client = OpenAI(
+                api_key=provider_config["api_key"],
+                base_url=provider_config["base_url"]
+            )
         
         # Test completion
         logger.info("Testing API with a simple completion request...")
         response = client.chat.completions.create(
-            model=azure_config["model"],
+            model=provider_config["model"],
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": "Say hello and confirm you're working!"}
             ],
-            max_completion_tokens=100
+            max_tokens=100
         )
         
         if response.choices:
@@ -58,5 +65,5 @@ def test_azure_openai_connection():
         return False
 
 if __name__ == "__main__":
-    success = test_azure_openai_connection()
-    sys.exit(0 if success else 1) 
+    success = test_api_connection()
+    sys.exit(0 if success else 1)
