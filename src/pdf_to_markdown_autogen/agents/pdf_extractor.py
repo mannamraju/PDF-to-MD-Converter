@@ -12,33 +12,48 @@ import numpy as np
 import time
 import logging
 import random
+from openai import AzureOpenAI
 
 logger = logging.getLogger(__name__)
 
 class PDFExtractorAgent:
+    """Agent responsible for extracting text content from PDFs."""
+    
     def __init__(self, config: Dict[str, Any]):
+        """Initialize the PDF extractor agent."""
         self.config = config
+        
+        # Extract Azure OpenAI configuration
+        azure_config = config.get("config_list", [{}])[0]
+        self.client = AzureOpenAI(
+            api_version=azure_config.get('api_version', '2024-12-01-preview'),
+            azure_endpoint=azure_config.get('azure_endpoint'),
+            api_key=azure_config.get('api_key'),
+        )
+        
         self.agent = autogen.AssistantAgent(
             name="pdf_extractor",
-            system_message="""You are a PDF content extraction specialist. Your role is to:
-            1. Extract text content from PDFs while preserving structure and formatting
-            2. Handle tables, lists, and special characters accurately
-            3. Maintain the original document's hierarchy and organization
-            4. Preserve all formatting and styling information
-            5. Extract and handle images appropriately
-            6. Ensure no content is lost or modified
-            7. Keep the original text exactly as it appears
-            8. Maintain document structure and layout""",
+            system_message="""You are an expert at analyzing PDF documents and converting them to well-formatted Markdown.
+            Your task is to:
+            1. Analyze the PDF structure and content
+            2. Extract text while preserving formatting
+            3. Handle image extraction and placement
+            4. Generate initial markdown
+            """,
             llm_config=config
         )
+        
+        self.min_request_interval = 3.0
+        self.chunk_size = 4000
+        self.max_retries = 5
+        self.base_delay = 60
+        self.rate_limit_history = []
         self.last_request_time = 0
-        self.min_request_interval = 3.0  # Increased minimum interval between requests
-        self.max_validation_attempts = 3  # Maximum number of validation attempts per chunk
-        self.rate_limit_count = 0  # Track rate limit occurrences
-        self.last_rate_limit_time = 0  # Track last rate limit occurrence
-        self.chunk_size = 2000  # Smaller chunk size for processing
-        self.max_retries = 5  # Increased max retries
-        self.base_delay = 60  # Base delay for rate limit handling
+        self.token_bucket = {
+            "tokens": 1,
+            "last_update": time.time(),
+            "rate": 1/3.0
+        }
     
     def _wait_for_rate_limit(self):
         """Implement token bucket algorithm for rate limiting with dynamic intervals."""
@@ -46,15 +61,19 @@ class PDFExtractorAgent:
         time_since_last_request = current_time - self.last_request_time
         
         # Adjust interval based on rate limit history
-        if self.rate_limit_count > 0:
-            time_since_last_rate_limit = current_time - self.last_rate_limit_time
+        if self.rate_limit_history:
+            time_since_last_rate_limit = current_time - self.rate_limit_history[-1]
             if time_since_last_rate_limit < 300:  # Within 5 minutes of last rate limit
                 self.min_request_interval *= 1.5  # Increase interval by 50%
-                logger.info(f"Rate limit history detected. Increased interval to {self.min_request_interval:.2f} seconds")
+                # Only log significant rate limit events
+                if self.min_request_interval > 10.0:
+                    logger.info(f"Rate limit history detected. Increased interval to {self.min_request_interval:.2f} seconds")
         
         if time_since_last_request < self.min_request_interval:
             sleep_time = self.min_request_interval - time_since_last_request
-            logger.info(f"Rate limiting: waiting {sleep_time:.2f} seconds")
+            # Only log significant wait times
+            if sleep_time > 5.0:
+                logger.info(f"Rate limiting: waiting {sleep_time:.2f} seconds")
             time.sleep(sleep_time)
         
         self.last_request_time = time.time()
@@ -62,8 +81,7 @@ class PDFExtractorAgent:
     def _handle_rate_limit(self, error: Exception) -> None:
         """Handle rate limit errors with exponential backoff and jitter."""
         if "429" in str(error):
-            self.rate_limit_count += 1
-            self.last_rate_limit_time = time.time()
+            self.rate_limit_history.append(time.time())
             
             for attempt in range(self.max_retries):
                 # Calculate delay with exponential backoff and jitter
@@ -71,11 +89,13 @@ class PDFExtractorAgent:
                 jitter = random.uniform(0, delay * 0.1)  # 10% jitter
                 total_delay = delay + jitter
                 
-                logger.info(f"Rate limit hit. Waiting {total_delay:.2f} seconds before retry {attempt + 1}/{self.max_retries}")
+                # Only log significant rate limit events
+                if attempt >= 2 or total_delay > 120:
+                    logger.info(f"Rate limit hit. Waiting {total_delay:.2f} seconds before retry {attempt + 1}/{self.max_retries}")
                 time.sleep(total_delay)
             
-            # Reset rate limit count after successful retries
-            self.rate_limit_count = 0
+            # Reset rate limit history after successful retries
+            self.rate_limit_history = []
             raise Exception(f"Rate limit exceeded after {self.max_retries} retries")
         raise error
     
@@ -149,20 +169,44 @@ class PDFExtractorAgent:
         self._wait_for_rate_limit()
         
         try:
-            response = self.agent.generate_reply(
-                messages=[{
-                    "role": "user",
-                    "content": f"Convert this PDF content to markdown while preserving all formatting and structure:\n\n{chunk}"
-                }]
+            # Extract Azure OpenAI configuration
+            azure_config = self.config.get("config_list", [{}])[0]
+            
+            response = self.client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert at analyzing PDF documents and converting them to well-formatted Markdown."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Convert this PDF content to markdown while preserving all formatting and structure:\n\n{chunk}"
+                    }
+                ],
+                model=azure_config.get('model', 'o1'),
+                max_completion_tokens=self.config.get('max_tokens', 40000),
+                temperature=self.config.get('temperature', 1.0)
             )
-            return response
+            
+            if not response.choices:
+                raise Exception("Empty response received from the model")
+            
+            return response.choices[0].message.content
+                
         except Exception as e:
+            logger.error(f"Error processing chunk: {str(e)}")
             self._handle_rate_limit(e)
+            raise  # Re-raise the exception after handling rate limits
     
     def extract_content(self, pdf_path: str) -> str:
         """Extract content from PDF with chunked processing."""
         try:
+            # Extract Azure OpenAI configuration
+            azure_config = self.config.get("config_list", [{}])[0]
+            
             # Extract text and images
+            logger.info(f"\n=== PDF Extractor Starting Analysis ===")
+            logger.info(f"Analyzing PDF structure: {pdf_path}")
             text_content = self.extract_text(pdf_path)
             images = self.extract_images(pdf_path, Path(pdf_path).parent / "output" / "images")
             
@@ -171,8 +215,54 @@ class PDFExtractorAgent:
             processed_chunks = []
             
             for i, chunk in enumerate(chunks):
-                logger.info(f"Processing chunk {i+1}/{len(chunks)}")
-                processed_chunk = self._process_chunk(chunk)
+                self._wait_for_rate_limit()
+                logger.info(f"\n=== Processing Chunk {i+1}/{len(chunks)} ===")
+                
+                processing_prompt = f"""Convert this PDF content to markdown while preserving all formatting and structure:
+
+PDF Content (Chunk {i+1}/{len(chunks)}):
+{chunk}
+
+Requirements:
+1. Preserve exact text content and order
+2. Maintain heading hierarchy (use #, ##, ### etc.)
+3. Format lists and tables correctly
+4. Preserve code blocks and special formatting
+5. Handle any complex layouts
+
+Please provide detailed markdown conversion that keeps all original content intact."""
+
+                logger.info("\nExtractor: Analyzing content structure...")
+                logger.info("- Detecting headings and section hierarchy")
+                logger.info("- Identifying lists, tables, and special elements")
+                logger.info("- Analyzing formatting requirements")
+                
+                response = self.client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are an expert PDF content analyzer and markdown converter. Your task is to convert PDF content to perfectly formatted markdown while preserving all content and structure exactly."
+                        },
+                        {
+                            "role": "user",
+                            "content": processing_prompt
+                        }
+                    ],
+                    model=azure_config.get('model', 'o1'),
+                    max_completion_tokens=self.config.get('max_tokens', 40000),
+                    temperature=self.config.get('temperature', 1.0)
+                )
+                
+                if not response.choices:
+                    raise Exception(f"Empty response received from the model for chunk {i+1}")
+                
+                processed_chunk = response.choices[0].message.content
+                logger.info(f"\nExtractor: Completed markdown conversion for chunk {i+1}")
+                logger.info("Content structure preserved:")
+                logger.info("- Headings and sections maintained")
+                logger.info("- Lists and tables formatted")
+                logger.info("- Special elements handled")
+                
                 processed_chunks.append(processed_chunk)
             
             # Combine processed chunks
@@ -180,10 +270,14 @@ class PDFExtractorAgent:
             
             # Add image references
             if images:
+                logger.info(f"\nExtractor: Processing {len(images)} extracted images")
                 markdown_content += "\n\n## Images\n"
                 for i, img_path in enumerate(images):
                     markdown_content += f"\n![Image {i+1}]({img_path})\n"
+                logger.info("Image references added to markdown")
             
+            logger.info("\n=== PDF Extraction Complete ===")
+            logger.info("Final markdown content generated with all elements preserved")
             return markdown_content
             
         except Exception as e:

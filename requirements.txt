@@ -1,16 +1,25 @@
 # Core dependencies
+pyautogen>=0.2.0
+python-dotenv>=1.0.0
 PyPDF2>=3.0.0
 pdf2image>=1.16.3
 Pillow>=10.0.0
 markdown>=3.4.0
-python-dotenv>=1.0.0
 openai>=1.12.0
-pyautogen>=0.8.0
 opencv-python>=4.8.0
 numpy>=1.24.0
 
-# Development dependencies
-pytest>=7.0.0
-black>=23.0.0
-isort>=5.0.0
-flake8>=6.0.0
+# OpenAI/Azure Integration
+openai>=1.12.0
+python-dotenv>=1.0.0
+
+# PDF Processing
+PyPDF2>=3.0.0
+pdf2image>=1.16.3
+Pillow>=10.0.0
+opencv-python>=4.8.0
+
+# Utility
+numpy>=1.24.0
+tqdm>=4.65.0
+colorama>=0.4.6  # For Windows terminal colors

@@ -34,3 +34,7 @@ requirements-*.txt
 !requirements-dev.txt
 requirements-dev.lock
 requirements.lock
+
+# AutoGen cache
+cache/
+.cache/

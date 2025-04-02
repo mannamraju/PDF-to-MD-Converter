@@ -1,6 +1,39 @@
 # PDF to Markdown Converter
 
-A powerful tool that converts PDF documents to well-formatted Markdown, preserving structure, formatting, and images.
+A Python application that converts PDF documents to well-formatted Markdown using Azure OpenAI services.
+
+## Configuration
+
+The application uses Azure OpenAI services with the following configuration:
+- Model: o1
+- API Version: 2024-12-01-preview
+- Endpoint: https://maopenai050.openai.azure.com/
+
+## Dependencies
+
+- Python 3.x
+- Azure OpenAI Python SDK
+- PyPDF2
+- pdf2image
+- Pillow
+- OpenCV
+- autogen
+
+## Project Structure
+
+```
+.
+├── src/
+│   ├── pdf_to_markdown_autogen/
+│   │   ├── agents/
+│   │   │   ├── pdf_extractor.py
+│   │   │   ├── md_validator.py
+│   │   │   └── ...
+│   │   └── ...
+│   ├── run_converter.py
+│   └── test_azure_openai.py
+└── README.md
+```
 
 ## Features
 

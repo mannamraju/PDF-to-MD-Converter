@@ -3,10 +3,29 @@
 # Exit on error
 set -e
 
+# Source bash profile for proper environment setup
+if [ -f ~/.bash_profile ]; then
+    source ~/.bash_profile
+fi
+
 # Get the script's directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "🚀 Initializing PDF to Markdown Converter (AutoGen Implementation)..."
+
+# Ensure we're using Python 3
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Python3 is not installed or not in PATH"
+    exit 1
+fi
+
+# Check Python version
+python_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+if (( $(echo "$python_version < 3.8" | bc -l) )); then
+    echo "❌ Python 3.8 or higher required (found $python_version)"
+    exit 1
+fi
+echo "✅ Python version $python_version"
 
 # Check if we're in the correct directory
 if [ ! -f "$SCRIPT_DIR/pyproject.toml" ]; then
@@ -99,4 +118,4 @@ Next steps:
    - Add your API key and endpoint
 2. Run the AutoGen implementation:
    rye run python run_autogen.py
-" 
+"

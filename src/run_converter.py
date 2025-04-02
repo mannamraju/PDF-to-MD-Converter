@@ -1,31 +1,50 @@
+#!/usr/bin/env python3
+"""
+PDF to Markdown Converter - Main Script
+"""
+
 import os
-from dotenv import load_dotenv
-from pdf_to_markdown_autogen.converter import PDFToMarkdownConverter
-from pdf_to_markdown_autogen.config import get_config
+import sys
+import logging
+from pathlib import Path
+from pdf_to_markdown_autogen.ai_processor import AIProcessor
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('conversion.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 def main():
-    # Load environment variables
-    load_dotenv()
+    # Hardcoded input file path
+    input_file = "/Users/mannamraju/localCode/DMAIO-ST-One-Data-Feed-Kubernetes-Edge-270325-191539.pdf"
     
-    # Get configuration
-    config = get_config()
+    # Create output directory if it doesn't exist
+    output_dir = Path("output")
+    output_dir.mkdir(exist_ok=True)
     
-    # Initialize converter
-    converter = PDFToMarkdownConverter(config)
-    
-    # Get PDF path from user
-    pdf_path = input("Please enter the path to your PDF file: ")
-    
-    # Generate output path
-    output_path = os.path.splitext(pdf_path)[0] + ".md"
-    
+    logger.info(f"Starting conversion of {input_file}")
     try:
-        # Convert PDF to Markdown
-        markdown_content = converter.convert(pdf_path, output_path)
-        print(f"\nConversion completed successfully!")
-        print(f"Output saved to: {output_path}")
+        # Use AutoGen processor
+        processor = AIProcessor(input_file)
+        output_file = processor.process()
+        
+        if output_file is None:
+            logger.error("Conversion failed - see above errors for details")
+            sys.exit(1)
+        
+        logger.info(f"Conversion completed successfully. Output saved to {output_file}")
+        sys.exit(0)
+        
     except Exception as e:
-        print(f"\nError during conversion: {str(e)}")
+        logger.error(f"Error during conversion: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()
