@@ -2,6 +2,14 @@
 
 ## Architecture Diagram
 
+[Decision architecture](../images/Decision_architedcture.png)
+We can query data from PostgreSQL  directly for detailed validation & comparison. May require a dif ferent set of networking &  
+connectivity challenges, but could be a fallback if AIO pipelines don’t work.
+
+This would decouple proving 2 things:  
+1. ST-One data flow at the edge  
+2. AIO data pipelines & cloud connectors  
+
 ## ST-One Data Feed Process
 
 1. PLCs and factory equipment send data to the ST -One devices inside the OT  network  
@@ -16,32 +24,8 @@
    Mosquitto is required to bridge topics due to incompatibilities between RabbitMQ’ s MQTT  plugin and AIO’s MQ bridging.  
 7. The Mosquitto broker bridges topics into AIO MQ to be made available for AIO components.  
 8. AIO Data Processing pipelines or Cloud Connectors read messages from the AIO MQ.  
-   The AIO MQ service may be redundant if AIO features can read messages directly from Mosquitto.ST-One and AIO components will be in their own namespaces  
-
-```
-Azure Stack HCI
-AKS on HCI
-ST-OneEdge Data
-FeedBlob StorageMessage V alidation ST-One APICloudMosquitto AIO MQAIO Data Processor
-Cloud ConnectorRabbitMQ Ingest Service PostgreSQL5GB 5GB 40GBPLC
-PLC
-PLCST-One DevicesOT
-IT1
-23
-4
-5
-6
-7 8
-9
-10 105GB 5GB
-```
-
-We can query data from PostgreSQL  directly for detailed validation & comparison. May require a dif ferent set of networking &  
-connectivity challenges, but could be a fallback if AIO pipelines don’t work.
-
-This would decouple proving 2 things:  
-1. ST-One data flow at the edge  
-2. AIO data pipelines & cloud connectors  
+   - The AIO MQ service may be redundant if AIO features can read messages directly from Mosquitto.
+   - ST-One and AIO components will be in their own namespaces  
 
 9. AIO Data Processing pipelines or Cloud Connectors write telemetry to Blob Storage in the cloud.  
 10. The Message V alidation component reads individual messages from Blob Storage and the ST -One API to compare and validate ST -  
