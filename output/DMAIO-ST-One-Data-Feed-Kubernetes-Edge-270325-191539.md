@@ -2,7 +2,8 @@
 
 ## Architecture Diagram
 
-[Decision architecture](../images/Decision_architedcture.png)
+![Decision architecture](../images/Decision_architedcture.png) 
+
 We can query data from PostgreSQL  directly for detailed validation & comparison. May require a dif ferent set of networking &  
 connectivity challenges, but could be a fallback if AIO pipelines don’t work.
 
