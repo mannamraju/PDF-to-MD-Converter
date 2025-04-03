@@ -2,7 +2,7 @@
 
 Date: **2025-03-27**
 
-Author(s): **Madhav Annamraju**
+Author(s): **AABB**
 
 ## Status (optional)
 
@@ -74,17 +74,17 @@ This would decouple proving 2 things:
 
 The components that make up the Machine portion in Kubernetes include:
 
-1. **RabbitMQ**: A message broker  that supports MQTT  through a plugin.
+1. **RabbitMQ**: A message broker that [supports MQTT through a plugin](https://www.rabbitmq.com/docs/mqtt).
    - requires a 5GB mounted volume for storing queued messages.
    - Deployed as a single pod Kubernetes StatefulSet and configured with ConfigMaps and Secrets.
-   - See Deploying RabbitMQ to Kubernetes: What's Involved?  for more details on deploying in Kubernetes.
+   - See [Deploying RabbitMQ to Kubernetes: What's Involved?](https://www.rabbitmq.com/blog/2020/08/10/deploying-rabbitmq-to-kubernetes-whats-involved)  for more details on deploying in Kubernetes.
 
 2. **The Ingest Service**: A proprietary service that manages messages from the OT  network through RabbitMQ and includes custom batch
    decompression logic for placing individual telemetry messages back into RabbitMQ.
    - requires 5GB mounted volume to use for caching.
    - Deployed as a Kubernetes Deployment and configured with ConfigMaps and Secrets.
 
-3. **Postgres**: Implemented as timescaledb  to store time series data. This provides backing storage for the Ingest service.
+3. **Postgres**: Implemented as [timescaledb](https://docs.timescale.com/self-hosted/latest/install/)  to store time series data. This provides backing storage for the Ingest service.
    - requires 40GB mounted volume for longer term persistence.
    - Deployed as a single pod Kubernetes StatefulSet and configured with ConfigMaps and Secrets.
    - Timescale used to support a helm chart , but recently [deprecated it in favor of PostgreSQL operators for Kubernetes](https://docs.timescale.com/self-hosted/latest/install/installation-kubernetes/) .
@@ -104,15 +104,15 @@ The components that make up the AIO portion in Kubernetes include:
 
 3. **AIO Data Processor & Cloud Connector**: AIO’s features that can transport data from message brokers to the cloud (blob storage).
    - We would only need one of these options to send data from an MQTT  broker to Blob Storage.
-   - AIO Data Processor  runs generic no-code pipelines for processing data at the edge. W e would not directly deploy the pods that
+   - [AIO Data Processor](https://learn.microsoft.com/en-us/azure/iot-operations/process-data/overview-data-processor)  runs generic no-code pipelines for processing data at the edge. We would not directly deploy the pods that
      these pipelines run on.
-   - Cloud Connectors  are no-code components the define connections that bridge data between a source and destination. W e would
+   - [Cloud Connectors](https://learn.microsoft.com/en-us/azure/iot-operations/connect-to-cloud/howto-configure-data-lake#configure-to-send-data-to-azure-data-lake-storage-gen2-using-sas-token) are no-code components the define connections that bridge data between a source and destination. We would
      not directly deploy the pods that these connectors run on.
 
 ## Container Images
 
 The table below shows all of the container images that are required to power the system above. Platform-level components can pull from
-mcr.microsoft.com  for images while custom components and open source images will be hosted in Kraft’ s ACR to enable security
+[mcr.microsoft.com](http://mcr.microsoft.com/)  for images while custom components and open source images will be hosted in Kraft’ s ACR to enable security
 scanning, but we can pull from Dockerhub for the POC.
 
 | Kubernetes Component                       | Maintainer           | Image                         | Public/Private | Container Registry                                 |
