@@ -119,8 +119,8 @@ scanning, but we can pull from Dockerhub for the POC.
 |-------------------------------------------|----------------------|--------------------------------|----------------|----------------------------------------------------|
 | RabbitMQ                                  | Docker Community     | rabbitmq                      | Public         | domainname.azurecr.io          |
 | Ingest Service                            | Machine              | ---                           | Private        | domainname.azurecr.io          |
-| PostgreSQL                                | Timescale           | timescale/timescaledb-ha      | Public         | domainname.azurecr.io          |
-| Mosquitto                                 | Eclipse Foundation  | eclipse-mosquitto             | Public         | domainname.azurecr.io          |
+| PostgreSQL                                | Timescale           | [timescale/timescaledb-ha](https://hub.docker.com/r/timescale/timescaledb-ha)      | Public         | domainname.azurecr.io          |
+| Mosquitto                                 | Eclipse Foundation  | [eclipse-mosquitto](https://hub.docker.com/_/eclipse-mosquitto)             | Public         | domainname.azurecr.io          |
 | AIO MQ                                    | Microsoft           | ---                           | Public         | mcr.microsoft.com                                  |
 | AIO Data Processor & Cloud Connector      | Microsoft           | ---                           | Public         | mcr.microsoft.com                                  |
 
