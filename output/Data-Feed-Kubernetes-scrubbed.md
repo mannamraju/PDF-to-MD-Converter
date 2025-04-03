@@ -87,8 +87,7 @@ The components that make up the Machine portion in Kubernetes include:
 3. **Postgres**: Implemented as timescaledb  to store time series data. This provides backing storage for the Ingest service.
    - requires 40GB mounted volume for longer term persistence.
    - Deployed as a single pod Kubernetes StatefulSet and configured with ConfigMaps and Secrets.
-   - Timescale used to support a helm chart , but recently deprecated it in favor of PostgreSQL  operators for Kubernetes .
-   - More details on resource usage can be found in Resource Utilization & Capacity Estimates .
+   - Timescale used to support a helm chart , but recently [deprecated it in favor of PostgreSQL operators for Kubernetes](https://docs.timescale.com/self-hosted/latest/install/installation-kubernetes/) .
 
 ## AIO Kubernetes Components
 
@@ -97,8 +96,6 @@ The components that make up the AIO portion in Kubernetes include:
 1. **Mosquitto**: not specific to AIO, but required to bridge messages with Machine’s RabbitMQ.
    - requires a 5GB mounted volume for storing queued messages.
    - Deployed as a StatefulSet and configured with ConfigMaps and Secrets
-   - See Spike - Connect AIO with External Message Broker  for more details on setting up a mosquitto broker as a bridge in
-     Kubernetes.
 
 2. **AIO MQ**: AIO’s MQTT  message broker. This component may be redundant with the mosquitto broker depending on whether AIO
    features can integrate well with mosquitto.
