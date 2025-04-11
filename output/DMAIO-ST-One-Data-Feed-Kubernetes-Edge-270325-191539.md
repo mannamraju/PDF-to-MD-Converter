@@ -7,7 +7,6 @@
 
 > [!NOTE] 
 > We can query data from [PostgreSQL](https://www.postgresql.org/) directly for detailed validation & comparison. May require a different set of networking & connectivity challenges, but could be a fallback if AIO pipelines don’t work.
-
 > This would decouple proving 2 things:  
 > 1. Gateway data flow at the edge  
 > 2. AIO data pipelines & cloud connectors  
