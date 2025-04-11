@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     # Hardcoded input file path
-    input_file = "/Users/mannamraju/localCode/DMAIO-ST-One-Data-Feed-Kubernetes-Edge-270325-191539.pdf"
+    input_file = "/Users/mannamraju/localCode/DMAIO-Application-Observability-for-Edge-Deployed-Solutions-270325-191742.pdf"
     
     # Create output directory if it doesn't exist
     output_dir = Path("output")

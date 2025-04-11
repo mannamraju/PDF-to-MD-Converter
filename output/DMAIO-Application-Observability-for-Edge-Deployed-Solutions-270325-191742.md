@@ -1,4 +1,3 @@
-
 # Application Observability for Edge-Deployed Solutions
 
 ## Overview
@@ -68,8 +67,7 @@ source collectors available.) | Multiple backends including Application Insights
 4. The observability system should have the capability to enrich the telemetry for improved consolidation in Log Analytics and Grafana.
 
 ### Result
-
-Based on the criteria, **OpenTelemetry** is recommended as the preferred technology.
+Based on the criteria, OpenTelemetry is recommended as the preferred technology.
 OpenTelemetry provides the capability to queue messages in memory or on a file system to handle network interruptions between the edge and Azure, ensuring reliable telemetry transport.
 Furthermore, OpenTelemetry offers flexibility in filtering metrics, logs, and traces, optimizing data transmission by selectively sending specific telemetry types and thereby reducing outbound
 network traffic from the edge.
@@ -95,13 +93,13 @@ A data platform is used for aggregating, analyzing, and visualizing telemetry da
 
 | **Platform**             | **Description**                                           | **Metrics** | **Logs** | **Traces** |
 |--------------------------|-----------------------------------------------------------|-------------|----------|------------|
-| Azure Monitor Metrics    | Time-series database optimized for analyzing time-stamped data. | Yes         | -        | -          |
-| Azure Managed Prometheus | A PromQL interface on top of Azure Monitor Metrics.       | Yes         | -        | -          |
-| Log Analytics            | Provides a powerful analysis engine and rich query language KQL. | Yes         | Yes      | -          |
+| Azure Monitor Metrics    | Time-series database optimized for analyzing time-stamped data. | Yes         | No       | No         |
+| Azure Managed Prometheus | A PromQL interface on top of Azure Monitor Metrics.       | Yes         | No       | No         |
+| Log Analytics            | Provides a powerful analysis engine and rich query language KQL. | Yes         | Yes      | No         |
 | Application Insights     | Helps developers with correlation.                        | Yes         | Yes      | Yes        |
 
-
 A detailed comparison can be found here: [Azure Monitor best practices - Analysis and visualizations - Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/best-practices-analysis)
+
 ---
 
 ## Proposed Development Plan
@@ -113,8 +111,8 @@ A detailed comparison can be found here: [Azure Monitor best practices - Analysi
 controlled and systematic manner.
 2. Azure Monitor Agent (AMA) will be configured to pull telemetry from OpenTelemetry Collector’s Prometheus. AMA is used as an agent in the middle to push telemetry to Azure Managed
 Prometheus. Presently AMA supports only Azure RBAC for authorization. AMA helps to connect OpenTelemetry with Prometheus with the help of Service Principal.
-a. This necessitates coordination between AIO telemetry collection pipeline as AIO also configures AMA agent to pull telemetry.
-3. A Kubernetes service will be deployed to enable OTLP instrumented workloads to send telemetry to service at <service-name>.<namespace>.svc.cluster.local:4317
+   - This necessitates coordination between AIO telemetry collection pipeline as AIO also configures AMA agent to pull telemetry.
+3. A Kubernetes service will be deployed to enable OTLP instrumented workloads to send telemetry to service at `<service-name>.<namespace>.svc.cluster.local:4317`.
 4. Control Tower will publish a custom metric showing the most recent successful telemetry push to Blob storage. This means that no additional configuration will be needed to connect Azure
 Managed Grafana to Azure Table Storage.
 ---
