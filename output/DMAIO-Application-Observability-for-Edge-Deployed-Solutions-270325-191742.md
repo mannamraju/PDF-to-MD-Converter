@@ -100,6 +100,7 @@ A data platform is used for aggregating, analyzing, and visualizing telemetry da
 | Log Analytics            | Provides a powerful analysis engine and rich query language KQL. | Yes         | Yes      | -          |
 | Application Insights     | Helps developers with correlation.                        | Yes         | Yes      | Yes        |
 
+
 A detailed comparison can be found here: [Azure Monitor best practices - Analysis and visualizations - Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/best-practices-analysis)
 ---
 
