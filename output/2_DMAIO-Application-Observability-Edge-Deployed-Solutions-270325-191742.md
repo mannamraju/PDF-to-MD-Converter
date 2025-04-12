@@ -258,86 +258,92 @@ Logs & Traces
 ### Logs and traces are a function of the rate and size of log statements. Let’ s estimate this to be 1 GB/day .
 ## Queue storage requirements
 ### If number of workloads is N=5 , then:
+
 ## Configuration
-### Based on rate of production, storage requirements, and maximum tolerable data loss, we propose the following configurations:
-Max outage = 1 day
-PVC storage minimum = 10 GB/day
-retry_on_failure
-initial_interval=30
-max_interval=60
-max_elapsed_time=86400 (1 day)
-sending_queue
-num_consumers=10
-queue_size=3000 (Calculated as 86400/30=2880 rounded up to thousands)
-Deployment and Deployment Artifacts
-### Monitor) and helpers (File Storage) required for our solution.
-| The open-source contributor | version of OpenT elemetry Collector will be deployed using GitOps-based workflow . The contributor version is deployed because it includes the exporters (Azure |
-| --- | --- |
-Furthermore, while the OpenT elemetry Collector does come with an of ficial Helm Chart , it may not meet some of requirements when it comes to configuration. This may necessitate an extension
-### to existing chart or writing a custom deployment manifest. Deployments must ensure:
-### 1. PersistentV olumeClaim  is attached to each deployed instance for caching to local disk.
-### 2. Service  per deployed instance of Collector to ensure reachability via HTTP/gRPC.
 
-### Images from this page
+Based on the rate of production, storage requirements, and maximum tolerable data loss, we propose the following configurations:
 
-![Image from page 6](../output/images/image_6_10.png)
+- Max outage = 1 day
+- PVC storage minimum = 10 GB/day
+- retry_on_failure
+  - initial_interval = 30
+  - max_interval = 60
+  - max_elapsed_time = 86400 (1 day)
+- sending_queue
+  - num_consumers = 10
+  - queue_size = 3000 (Calculated as 86400/30 = 2880 rounded up to thousands)
 
-![Image from page 6](../output/images/image_6_11.png)
+### Deployment and Deployment Artifacts
 
-![Image from page 6](../output/images/image_6_12.png)
+The open-source contributor version of OpenTelemetry Collector will be deployed using a GitOps-based workflow. The contributor version is deployed because it includes the exporters (Azure Monitor) and helpers (File Storage) required for our solution.
 
-![Image from page 6](../output/images/image_6_13.png)
+Furthermore, while the OpenTelemetry Collector does come with an official Helm Chart, it may not meet some of the requirements when it comes to configuration. This may necessitate an extension to the existing chart or writing a custom deployment manifest. 
 
-![Image from page 6](../output/images/image_6_14.png)
+Deployments must ensure:
 
-![Image from page 6](../output/images/image_6_15.png)
+1. PersistentVolumeClaim is attached to each deployed instance for caching to local disk.
+2. Service per deployed instance of Collector to ensure reachability via HTTP/gRPC.
 
----
+## Merging Azure IoT Operations Configuration
 
-Merging Azure IoT Operations Configuration
-### running inside of AIO. This presents a problem.
-### A unified ama-metrics-prometheus-config  configuration will be created that merges the AIO configuration and additional configurations to scrape telemetry from <service-name>.
-### <namespace>.svc.cluster.local:8889/metrics  per deployed OpenT elemetry Collector instance.
+![Azure Monitoring Agent and OpenTelemetry Collector](../output/images/Azure_Monitor_System.png)
+
+The Azure Monitor Agent (AMA) will be configured to pull telemetry from OpenTelemetry Collector’s Prometheus. Azure IoT Operations also configures AMA to pull telemetry from the Prometheus server running inside of AIO. This presents a conflict in configuration.
+
+A unified `ama-metrics-prometheus-config` configuration will be created. This configuration will merge the AIO configuration with additional configurations to scrape telemetry from `<service-name>.<namespace>.svc.cluster.local:8889/metrics` for each deployed OpenTelemetry Collector instance.
+
 ### Security
-### It should be noted that opentelemetry-collector-contrib  image is hosted externally  and available via both Docker Hub and GitHub Container Registry .
-| Azure Monitor Agent (AMA) will be configured to pull telemetry from OpenT elemetry Collector ’s Prometheus. Azure IoT | Operations also configures | AMA | to pull telemetry from Prometheus server |
-| --- | --- | --- | --- |
-Data Retention
-### Metrics
-### nature of this solution, we recommend to continue with the default retention policy for Metrics.
-| By default, platform and custom metrics are stored for 93 days. Prometheus metrics are stored for 18 months, but a PromQL | query can only span a maximum of 32 days. ( source ) Based on the |
-| --- | --- |
-Logs and Traces
-By default, Log Analytics workspaces have a data retention period of 30 days ( source ). This retention policy is configurable. Based on the nature of the solution and feedback from Kraft,
-### retention period of 93 days will be configured for this solution.
+It should be noted that the `opentelemetry-collector-contrib` image is [hosted](https://opentelemetry.io/docs/collector/installation/) externally and is available via both Docker Hub and GitHub Container Registry.
+
+### Data Retention
+
+#### Metrics
+By default, platform and custom metrics are stored for 93 days. Prometheus metrics are stored for 18 months, but a PromQL query can only span a maximum of 32 days. Based on the nature of this solution, we recommend continuing with the default retention policy for metrics.
+
+#### Logs and Traces
+By default, Log Analytics workspaces have a data retention period of 30 days. This retention policy is configurable. Based on the nature of the solution and feedback from Kraft, a retention period of 93 days will be configured for this solution.
+
 ### Alerting
-Azure Monitor Alerts helps to detect and notify users when certain alerting rules are met. Alerting rules can be configured on data sources that include Azure Monitor Metrics, Log Analytics, and
-### Prometheus.
-### For this engagement, the following type of alerts will be implemented:
-Metric alertsAzure Monitor,
-Application InsightsMetrics, LogsMetrics can be platform metrics, custom metrics, logs from Azure
-Monitor or Application Insights. Metric alerts can also apply
-### multiple conditions and dynamic thresholds.
-### Log search
-alertsLog Analytics
-WorkspaceLogs Query Log Analytics to evaluate resource logs at a predefined
-### frequency.
-### Prometheus
-alertsAzure Monitor
-Managed PrometheusMetrics Alert rules are based on the PromQL open-source query
-language.Alert Type Data Sources Type Comments
+Azure Monitor Alerts helps to detect and notify users when certain alerting rules are met. Alerting rules can be configured on data sources that include Azure Monitor Metrics, Log Analytics, and Prometheus.
 
-### Images from this page
+For this engagement, the following type of alerts will be implemented:
 
-![Image from page 7](../output/images/image_7_16.png)
+![Alert Workflow](../output/images/Azure_Monitor_System.png)
 
-![Image from page 7](../output/images/image_7_17.png)
+| **Alert Type**      | **Data Sources**          | **Type**   | **Comments**                                                                 |
+|---------------------|---------------------------|------------|------------------------------------------------------------------------------|
+| Metric alerts       | Azure Monitor, Application Insights | Metrics, Logs | Metrics can be platform metrics, custom metrics, logs from Azure Monitor or Application Insights. Metric alerts can also apply multiple conditions and dynamic thresholds. |
+| Log search alerts   | Log Analytics Workspace  | Logs       | Query Log Analytics to evaluate resource logs at a predefined frequency.     |
+| Prometheus alerts   | Azure Monitor Managed Prometheus | Metrics    | Alert rules are based on the PromQL open-source query language.              |
 
----
+### Alert Criteria
 
-Alert Criteria
 Alert Query
-### Besides using the alert query to identify the alerts, the following scenarios must be covered.
+
+```kql
+traces
+| where message contains "*********************Consumers done...."
+| summarize
+    RunningSince = arg_min(timestamp, ''),
+    LastRun = arg_max(timestamp, ''),
+    Count = count()
+by
+    Location = tostring(customDimensions['location']),
+    severityLevel,
+    Environment = tostring(customDimensions['environment'])
+| project
+    Location,
+    RunningSince,
+    LastRun,
+    Count,
+    severityLevel,
+    TimeSinceLastRun = now() - LastRun,
+    Health = iff(datetime_part("minute", todatetime(now() - LastRun)) < 19 and datetime_part("hour", todatetime(now() - LastRun)) == 0, 'Healthy', 'Error'),
+    Environment
+| where Health contains "Error" and Environment contains "prod"
+```
+
+Besides using the alert query to identify the alerts, the following scenarios must be covered.
 - 1.. Application fatal issues
 - 2.. SQL Server connectivity issues
 - 3.. Blob Storage connectivity issue
@@ -345,15 +351,22 @@ Alert Query
 - 5.. Partial or Incorrect SQL  results
 Communication Mechanism
 ### Based on our discussions with Kraft, the following alerting mechanisms will be implemented:
-Service Identification
-### Each instrumented workload will be identified by its service.name . It will be a string composed of:
-plant_id-environment-application_name
-### Because multiple versions of an application may be deployed, each application will be further delineated by service.version .
-### Both properties will be able to applications via environment variables:
-OTEL_SER VICE_NAME
-OTEL_RESOURCE_A TTRIBUTES="service.version=<VERSION>"
-Instrumentation in Workloads
-### Applications that implement OTLP  instrumentation must retrieve the following environment variables:
+
+### Service Identification
+
+Each instrumented workload will be identified by its `service.name`. It will be a string composed of:
+
+- `plant_id-environment-application_name`
+
+Because multiple versions of an application may be deployed, each application will be further delineated by `service.version`.
+
+Both properties will be available to applications via environment variables:
+
+- `OTEL_SERVICE_NAME`
+- `OTEL_RESOURCE_ATTRIBUTES="service.version=<VERSION>"`
+
+### Instrumentation in Workloads
+Applications that implement OTLP  instrumentation must retrieve the following environment variables:
 OTEL_SER VICE_NAME
 OTEL_RESOURCE_A TTRIBUTES
 OTEL_EXPORTER_OTLP_ENDPOINT
@@ -362,21 +375,23 @@ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
 OTEL_EXPORTER_OTLP_INSECURE=true (secure without certificate validation)
 
-Publishing using opentelemetry-shell looks like:
-1 spec:
-2  containers:
-3  - name: {{ .Values.app.name }}
-4    image: {{ .Values.image }}
-5    env:
-6      - name: OTEL_EXPORTER_OTLP_ENDPOINT
-7      valueFrom:
-8          configMapKeyRef:
-9            name: platform-config
-10           key: OTEL_EXPORTER_OTLP_ENDPOINT
-
 The following changes will be implemented:
 1. Platform configurations will be updated to expose these values per cluster .
 2. Applications will be able to read these values using the following code:
+```yaml
+spec:
+  containers:
+  - name: {{ .Values.app.name }}
+    image: {{ .Values.image }}
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        valueFrom:
+          configMapKeyRef:
+            name: platform-config
+            key: OTEL_EXPORTER_OTLP_ENDPOINT
+```
+
+
 
 ## Control Tower
 Control Tower currently uses a checkpoint system implemented in Azure Table Storage. This system records the timestamp of the last successful file upload, allowing the application to track and
@@ -392,49 +407,47 @@ This metric can be published by Control Tower application code or RClone sidecar
 ### Application publishes metric (chosen path)
 The code changes to application will look like:
 
-1 from opentelemetry import metrics
-2
-3 meter = metrics .get_meter (__name__ )
-4
-5 counter = meter.create_counter (
+```python
+from opentelemetry import metrics
 
-6 name="last_successful_uploaded_timestamp" ,
-7 unit="1", 
-8 description ="The last successfully file uploaded timestamp" ,
-9 )
-10
-11 counter.add( 1)
+meter = metrics.get_meter(__name__)
+
+counter = meter.create_counter(
+    name="last_successful_uploaded_timestamp",
+    unit="1",
+    description="The last successfully file uploaded timestamp",
+)
+
+counter.add(1)
+```
 
 It is recommended to use a [counter](https://opentelemetry.io/docs/specs/otel/metrics/data-model/) : a value of 1 or more indicates a recorded checkpoint, while a value of 0 or the absence of a value indicates a failure.
 If the application publishes the metric, there will still be inaccuracies between the checkpointed record and the synchronization of files to the cloud discussed previously . Due to this, this approach is NOT  recommended.
 
 ### RClone publishes metric (alternative path)
 
-After a successful upload, rclone publishes an entry indicating it has successfully copied files to cloud. Currently , there is no of ficial OpenT elemetry SDK for shells like Bash or PowerShell. However , there are a few open-source implementations we can leverage:
-- [opentelemetry-shell](https://github.com/krzko/opentelemetry-shell)  (recommended) – A wide array of functions for publishing metrics. Logs and traces are yet to be implemented or have a rudimentary implementation.
-- [OTEL](https://github.com/serkan-ozal/otel-bash)  (OpenT elemetry) Bash  – Supports auto instrumentation.
+```bash
+#!/usr/bin/env bash
 
-1#!/usr/bin/env bash
-2
-3# Import functions
-4 . opentelemetry-shell/library/otel_metrics.sh
-5
-6# Main
-| 7otel_metrics_push_gauge "ko.wal.ski/brain/memory/used_bytes" | \ |
-| --- | --- |
-| 9 | "By" \ |
-| 12 | $RANDOM \ |
-| 13 | int |
----
+# Import functions
+. opentelemetry-shell/library/otel_metrics.sh
+
+# Main
+otel_metrics_push_gauge "ko.wal.ski/brain/memory/used_bytes" \
+  "By" \
+  $RANDOM \
+  int
+```
 
 ## Service-level Indicators
-.sql_connection_created 1 = true. 0 = false. Able to establish a connection to SQL.
-total_files_created_count Count of files to be created
-total_files_created_size_in_bytes The total size of files created in bytes
-elapsed_time Time it took to run the entire job
-num_sql_queries_with_data Number of SQL queries that returned data
-finished_execution Publish 1 to indicate a successful run.Metric Description
-
+| **Metric**                     | **Description**                                   |
+|--------------------------------|---------------------------------------------------|
+| .sql_connection_created        | 1 = true, 0 = false. Able to establish a connection to SQL. |
+| total_files_created_count      | Count of files to be created.                     |
+| total_files_created_size_in_bytes | The total size of files created in bytes.         |
+| elapsed_time                   | Time it took to run the entire job.               |
+| num_sql_queries_with_data      | Number of SQL queries that returned data.         |
+| finished_execution             | Publish 1 to indicate a successful run.           |
 
 ## Dashboard
 A Grafana dashboard will be created to provide fleet-wide visibility into Control Tower operations. This dashboard will mirror the functionality of an existing dashboard in Azure W orkbooks.
@@ -445,19 +458,10 @@ A more detailed dashboard will be built that will enable correlation of logs and
 ### CPU & Memory
 [Scaling](https://opentelemetry.io/docs/collector/scaling/) the OpenTelemetry Collector depends on the telemetry production rate, consumption rate, and queue size. Previously , we suggested a queue size of 3000 and a data production rate of 5 MB per day per workload being written to disk. This indicates that we may not require much memory . Therefore, we empirically propose the following which fits with our requested CPU and memory specifications documented in Resource Utilization & Capacity Estimates. 
 
-Application Multiplicity Min CPU Min |
-| --- | --- | --- |
-MemoryMax CPU Max
-MemoryComments
-
-|
-| --- | --- |
-from the cloud.OpenTelemetry
-Collectorn – Per
-environment500m 1024Mi 2000m 2048Mi
-Azure
-Monitoring Agent 1 – Per cluster 405m 1100Mi 14100m 29700Mi Already captured in
-capacity requests.
-| Total | 905m 2124Mi 16100m 31748Mi | 
+| **Application**           | **Multiplicity** | **Min CPU** | **Min Memory** | **Max CPU** | **Max Memory** | **Comments**                          |
+|---------------------------|------------------|-------------|----------------|-------------|----------------|---------------------------------------|
+| OpenTelemetry Collector   | Per environment  | 500m        | 1024Mi         | 2000m       | 2048Mi         |                                       |
+| Azure Monitoring Agent    | Per cluster      | 405m        | 1100Mi         | 14100m      | 29700Mi        | Already captured in capacity requests |
+| **Total**                 |                  | 905m        | 2124Mi         | 16100m      | 31748Mi        |                                       |
 
 ---
