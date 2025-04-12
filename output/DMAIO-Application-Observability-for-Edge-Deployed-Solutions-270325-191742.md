@@ -96,7 +96,7 @@ A detailed comparison can be found here: [Azure Monitor best practices - Analysi
 
 ### Architecture
 
-![Detailed Architecture](Observability_detailed_architecture.png)
+![Detailed Architecture](images/Observability_detailed_architecture.png)
 
 1. An OpenTelemetry Collector instance will be deployed per environment supporting software development lifecycle (SDLC). This enables the development, testing, and deployment in a controlled and systematic manner.
 2. Azure Monitor Agent (AMA) will be configured to pull telemetry from OpenTelemetry Collector’s Prometheus. AMA is used as an agent in the middle to push telemetry to Azure Managed Prometheus. Presently AMA supports only Azure RBAC for authorization. AMA helps to connect OpenTelemetry with Prometheus with the help of Service Principal.
@@ -162,17 +162,17 @@ As noted earlier, Exporter Helper will be deployed to queue messages to disk in 
 
 Metrics
 
-One of the chattiest receivers we deploy is the Kubelet Stats Receiver, which broadcasts a payload every 20 seconds. The payload size is proportional to the number of workloads and currently includes 64 metrics in numeric (integers and floats) and string formats. If we estimate that each field on average takes 10 bytes (about 10 characters in utf-8, 4 bytes for float, 8 bytes long, etc.), then we have ![Obs Equation3](Obs_Equation3.png) We can round it up to 1 KB for simplicity.
+One of the chattiest receivers we deploy is the Kubelet Stats Receiver, which broadcasts a payload every 20 seconds. The payload size is proportional to the number of workloads and currently includes 64 metrics in numeric (integers and floats) and string formats. If we estimate that each field on average takes 10 bytes (about 10 characters in utf-8, 4 bytes for float, 8 bytes long, etc.), then we have ![Obs Equation3](images/Obs_Equation3.png) We can round it up to 1 KB for simplicity.
 
 Then for 1 hour, data transmitted is
-![Obs Equation2](Obs_Equation2.png)
+![Obs Equation2](images/Obs_Equation2.png)
 
 We round up to a whole number meaning we need to store 5 MB of data/day/workload.
 
 ### Logs & Traces
 
 Logs and traces are a function of the rate and size of log statements. Let’s estimate this to be 1 GB/day.
-![Obs Equation4](Obs_Equation4.png)
+![Obs Equation4](images/Obs_equation4.png)
 
 ## Configuration
 
@@ -201,7 +201,7 @@ Deployments must ensure:
 
 ## Merging Azure IoT Operations Configuration
 
-![Azure Monitoring Agent and OpenTelemetry Collector](../output/images/Azure_Monitor_System.png)
+![Merging Azure IoT Operations Configuration](images/IoT_Operations_Configuration.png)
 
 The Azure Monitor Agent (AMA) will be configured to pull telemetry from OpenTelemetry Collector’s Prometheus. Azure IoT Operations also configures AMA to pull telemetry from the Prometheus server running inside of AIO. This presents a conflict in configuration.
 
@@ -227,7 +227,7 @@ Azure Monitor Alerts helps to detect and notify users when certain alerting rule
 
 For this engagement, the following type of alerts will be implemented:
 
-![Alert Workflow](../output/images/Azure_Monitor_System.png)
+![Alert Workflow](images/Alerting_System.png)
 
 | **Alert Type**      | **Data Sources**          | **Type**   | **Comments**                                                                 |
 |---------------------|---------------------------|------------|------------------------------------------------------------------------------|

@@ -2,7 +2,7 @@
 
 ## Architecture Diagram
 
-![Decision architecture](Decision_architedcture.png) 
+![Decision architecture](images/Decision_architedcture.png) 
 *ST-One and AIO components will be in their own namespaces.*
 
 > [!NOTE] 
@@ -88,4 +88,4 @@ Gateway will aid in managing Gateway services by being onboarded to Kraft’s do
 1. A-ID accounts and Azure RBAC Contributor roles to the Dev Resource group in Azure.  
 2. ZScaler set up for network connectivity to Kraft environments.  
 3. [ACR tokens scoped to only Gateway image repositories](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-repository-scoped-permissions).  
-![Ops and Monitoring](Ops_and_Monitoring.png)
+![Ops and Monitoring](images/Ops_and_Monitoring.png)

@@ -39,7 +39,7 @@ The decision is to implement a data feed process using Machine devices, RabbitMQ
 
 ## Architecture Diagram
 
-![Decision architecture](Decision_architedcture.png) 
+![Decision architecture](images/Decision_architedcture.png)
 
 We can query data from PostgreSQL  directly for detailed validation & comparison. May require a different set of networking &
 connectivity challenges, but could be a fallback if AIO pipelines don’t work.
