@@ -21,10 +21,6 @@ fi
 
 # Check Python version
 python_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-if (( $(echo "$python_version < 3.8" | bc -l) )); then
-    echo "❌ Python 3.8 or higher required (found $python_version)"
-    exit 1
-fi
 echo "✅ Python version $python_version"
 
 # Check if we're in the correct directory
@@ -34,16 +30,7 @@ if [ ! -f "$SCRIPT_DIR/pyproject.toml" ]; then
     exit 1
 fi
 
-# Check if Rye is installed
-if ! command -v rye &> /dev/null; then
-    echo "❌ Rye is not installed. Installing Rye..."
-    curl -sSf https://rye-up.com/get | bash
-    echo "✅ Rye installed successfully"
-else
-    echo "✅ Rye is already installed"
-fi
-
-# Check if Poppler is installed
+# Check for Poppler installation
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
     if ! command -v pdfinfo &> /dev/null; then
@@ -82,9 +69,9 @@ mkdir -p "$SCRIPT_DIR/../../output/images"
 # Change to script directory
 cd "$SCRIPT_DIR"
 
-# Install Python dependencies
+# Install dependencies using pip
 echo "📦 Installing Python dependencies..."
-rye sync
+pip install -e .
 
 # Create .env file only if it doesn't exist
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
@@ -117,5 +104,5 @@ Next steps:
    - Set API_PROVIDER to 'openai' or 'azure'
    - Add your API key and endpoint
 2. Run the AutoGen implementation:
-   rye run python run_autogen.py
+   python run_autogen.py
 "

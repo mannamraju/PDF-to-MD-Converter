@@ -31,14 +31,18 @@ class PDFExtractorAgent:
         if self.api_provider == "azure":
             self.client = AzureOpenAI(
                 api_version=api_config.get('api_version', '2024-12-01-preview'),
-                azure_endpoint=api_config.get('base_url'),
-                api_key=api_config.get('api_key'),
+                azure_endpoint=api_config.get('azure_endpoint', api_config.get('base_url')),
+                api_key=api_config.get('api_key')
             )
+            self.model = api_config.get('model', 'gpt-4o')  # Store model name for Azure
+            self.max_tokens = min(16384, self.config.get('max_tokens', 16384))  # Ensure we don't exceed model's limit
         else:
             self.client = OpenAI(
                 api_key=api_config.get('api_key'),
                 base_url=api_config.get('base_url')
             )
+            self.model = api_config.get('model', 'gpt-4-turbo-preview')
+            self.max_tokens = self.config.get('max_tokens', 40000)
         
         self.agent = autogen.AssistantAgent(
             name="pdf_extractor",
@@ -47,7 +51,7 @@ class PDFExtractorAgent:
             1. Analyze the PDF structure and content
             2. Extract text while preserving formatting
             3. Handle image extraction and placement
-            4. Generate initial markdown
+            4. Generate a markdown which matches the formatting in the PDF document 
             """,
             llm_config=config
         )
@@ -117,26 +121,94 @@ class PDFExtractorAgent:
                 text_content.append(page.extract_text())
         return text_content
     
+    def get_text_content(self, pdf_path: str) -> str:
+        """Get the raw text content from the PDF file."""
+        text_content = self.extract_text(pdf_path)
+        return "\n\n".join(text_content)
+
     def detect_image_boundaries(self, image: np.ndarray) -> List[Tuple[int, int, int, int]]:
-        """Detect boundaries of individual images in a page."""
+        """Detect boundaries of actual diagrams and figures in a page."""
         # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Apply threshold to get binary image
-        _, binary = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY_INV)
+        # Apply adaptive threshold to handle varying backgrounds
+        binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+        
+        # Apply morphological operations to connect components of diagrams
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
+        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
         
         # Find contours
         contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Filter and sort contours by area
+        # Get image dimensions for relative size calculations
+        height, width = image.shape[:2]
+        min_area = (width * height) * 0.01  # Minimum 1% of page area
+        
+        # Filter and sort contours
         image_regions = []
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
-            # Filter out very small regions that are likely text
-            if w * h > 100:  # Minimum area threshold
+            area = w * h
+            aspect_ratio = w / h if h != 0 else 0
+            
+            # Filter criteria for actual diagrams/figures:
+            # 1. Must be larger than min_area (eliminates text characters)
+            # 2. Must have reasonable aspect ratio (not too thin/wide)
+            # 3. Must have sufficient complexity (perimeter to area ratio)
+            if (area >= min_area and 
+                0.2 <= aspect_ratio <= 5 and  # Reasonable aspect ratio
+                cv2.contourArea(contour) / area > 0.1):  # Sufficient fill ratio
+                
+                # Expand region slightly to ensure we capture the full diagram
+                x = max(0, x - 5)
+                y = max(0, y - 5)
+                w = min(width - x, w + 10)
+                h = min(height - y, h + 10)
+                
                 image_regions.append((x, y, w, h))
         
+        # Merge overlapping regions
+        image_regions = self._merge_overlapping_regions(image_regions)
+        
         return sorted(image_regions, key=lambda r: (r[1], r[0]))  # Sort by y, then x
+
+    def _merge_overlapping_regions(self, regions: List[Tuple[int, int, int, int]]) -> List[Tuple[int, int, int, int]]:
+        """Merge overlapping image regions to avoid splitting diagrams."""
+        if not regions:
+            return regions
+        
+        # Sort regions by x coordinate
+        regions = sorted(regions, key=lambda r: r[0])
+        
+        merged = []
+        current = list(regions[0])
+        
+        for next_region in regions[1:]:
+            # Calculate current region bounds
+            current_x2 = current[0] + current[2]
+            current_y2 = current[1] + current[3]
+            
+            # Calculate next region bounds
+            next_x = next_region[0]
+            next_y = next_region[1]
+            next_x2 = next_x + next_region[2]
+            next_y2 = next_y + next_region[3]
+            
+            # Check for overlap
+            if (current_x2 >= next_x and current[0] <= next_x2 and
+                current_y2 >= next_y and current[1] <= next_y2):
+                # Merge regions
+                current[0] = min(current[0], next_x)
+                current[1] = min(current[1], next_y)
+                current[2] = max(current_x2, next_x2) - current[0]
+                current[3] = max(current_y2, next_y2) - current[1]
+            else:
+                merged.append(tuple(current))
+                current = list(next_region)
+        
+        merged.append(tuple(current))
+        return merged
     
     def extract_images(self, pdf_path: str, output_dir: Path) -> List[Tuple[str, str]]:
         """Extract images from PDF pages."""
@@ -178,9 +250,6 @@ class PDFExtractorAgent:
         self._wait_for_rate_limit()
         
         try:
-            # Extract Azure OpenAI configuration
-            azure_config = self.config.get("config_list", [{}])[0]
-            
             response = self.client.chat.completions.create(
                 messages=[
                     {
@@ -192,9 +261,8 @@ class PDFExtractorAgent:
                         "content": f"Convert this PDF content to markdown while preserving all formatting and structure:\n\n{chunk}"
                     }
                 ],
-                model=azure_config.get('model', 'o1'),
-                max_completion_tokens=self.config.get('max_tokens', 40000),
-                temperature=self.config.get('temperature', 1.0)
+                model=self.model,  # Only need model parameter for Azure OpenAI
+                max_tokens=self.max_tokens
             )
             
             if not response.choices:
@@ -210,9 +278,6 @@ class PDFExtractorAgent:
     def extract_content(self, pdf_path: str) -> str:
         """Extract content from PDF with chunked processing."""
         try:
-            # Extract Azure OpenAI configuration
-            azure_config = self.config.get("config_list", [{}])[0]
-            
             # Extract text and images
             logger.info(f"\n=== PDF Extractor Starting Analysis ===")
             logger.info(f"Analyzing PDF structure: {pdf_path}")
@@ -257,9 +322,8 @@ Please provide detailed markdown conversion that keeps all original content inta
                             "content": processing_prompt
                         }
                     ],
-                    model=azure_config.get('model', 'o1'),
-                    max_completion_tokens=self.config.get('max_tokens', 40000),
-                    temperature=self.config.get('temperature', 1.0)
+                    model=self.model,  # Only need model parameter for Azure OpenAI
+                    max_tokens=self.max_tokens
                 )
                 
                 if not response.choices:
@@ -281,7 +345,7 @@ Please provide detailed markdown conversion that keeps all original content inta
             if images:
                 logger.info(f"\nExtractor: Processing {len(images)} extracted images")
                 markdown_content += "\n\n## Images\n"
-                for i, img_path in enumerate(images):
+                for i, (img_path, _) in enumerate(images):
                     markdown_content += f"\n![Image {i+1}]({img_path})\n"
                 logger.info("Image references added to markdown")
             

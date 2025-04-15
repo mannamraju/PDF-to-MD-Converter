@@ -2,15 +2,13 @@ import os
 import sys
 import logging
 from pathlib import Path
-from .agents.pdf_extractor import PDFExtractorAgent
-from .agents.md_validator import MDValidatorAgent
-from .config import get_azure_config
+from pdf_to_markdown_autogen.agents.pdf_extractor import PDFExtractorAgent
+from pdf_to_markdown_autogen.agents.md_validator import MDValidatorAgent
+from pdf_to_markdown_autogen.config import get_azure_config
 
 # Add the current directory to the Python path
 current_dir = Path(__file__).parent
 sys.path.append(str(current_dir))
-
-from pdf_to_markdown_autogen.run_autogen import main
 
 logger = logging.getLogger(__name__)
 
@@ -47,5 +45,24 @@ def convert_pdf_to_markdown(input_file: str, output_file: str) -> None:
     
     logger.info("Conversion completed successfully")
 
+def main():
+    # Get the current directory
+    current_dir = Path(__file__).parent
+    
+    # Set paths
+    pdf_path = current_dir.parent / "DIGITAL-Spike_ Design Data Quality Solution-270325-192328.pdf"
+    output_dir = current_dir.parent / "output"
+    
+    # Extract full paths
+    input_file = str(pdf_path.resolve())
+    output_file = str((output_dir / pdf_path.stem).resolve().with_suffix('.md'))
+    
+    # Create output directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Convert PDF to markdown
+    convert_pdf_to_markdown(input_file, output_file)
+
 if __name__ == "__main__":
-    main() 
+    from run_autogen import main
+    main()

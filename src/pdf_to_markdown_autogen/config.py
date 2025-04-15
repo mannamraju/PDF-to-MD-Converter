@@ -25,7 +25,7 @@ class APIConfig:
             self.api_key = os.getenv('AZURE_OPENAI_API_KEY')
             self.base_url = os.getenv('AZURE_OPENAI_ENDPOINT')
             self.api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
-            self.model = os.getenv('AZURE_OPENAI_MODEL', 'o1')
+            self.model = os.getenv('AZURE_OPENAI_MODEL', 'gpt-4o')  # Updated default model name
         else:
             # OpenAI settings
             self.api_key = os.getenv('OPENAI_API_KEY')
@@ -68,6 +68,14 @@ class APIConfig:
 def get_config() -> Dict[str, Any]:
     """Get configuration from environment variables using APIConfig."""
     return api_config.get_config()
+
+def get_azure_config() -> Dict[str, Any]:
+    """Get Azure-specific configuration."""
+    if not api_config.is_azure:
+        raise ValueError("API_PROVIDER must be set to 'azure' to use Azure configuration")
+    
+    config = api_config.get_config()
+    return config["config_list"][0]
 
 # Create a global instance
 api_config = APIConfig()

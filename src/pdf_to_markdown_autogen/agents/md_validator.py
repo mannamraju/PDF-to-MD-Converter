@@ -24,14 +24,18 @@ class MDValidatorAgent:
         if self.api_provider == "azure":
             self.client = AzureOpenAI(
                 api_version=api_config.get('api_version', '2024-12-01-preview'),
-                azure_endpoint=api_config.get('base_url'),
-                api_key=api_config.get('api_key'),
+                azure_endpoint=api_config.get('azure_endpoint', api_config.get('base_url')),
+                api_key=api_config.get('api_key')
             )
+            self.model = api_config.get('model', 'gpt-4o')  # Store model name for Azure
+            self.max_tokens = min(16384, self.config.get('max_tokens', 16384))  # Ensure we don't exceed model's limit
         else:
             self.client = OpenAI(
                 api_key=api_config.get('api_key'),
                 base_url=api_config.get('base_url')
             )
+            self.model = api_config.get('model', 'gpt-4-turbo-preview')  # Store model name for OpenAI
+            self.max_tokens = self.config.get('max_tokens', 40000)
         
         self.agent = autogen.AssistantAgent(
             name="md_validator",
@@ -39,7 +43,7 @@ class MDValidatorAgent:
             Your task is to:
             1. Compare markdown content with original text
             2. Ensure all content is preserved
-            3. Verify formatting is correct
+            3. STRICTLY Verify formatting is correct
             4. Report any discrepancies
             """,
             llm_config=config
@@ -167,9 +171,6 @@ class MDValidatorAgent:
     def validate_markdown(self, markdown_content: str, original_text: str) -> Tuple[bool, str]:
         """Validate markdown content against original text."""
         try:
-            # Extract Azure OpenAI configuration
-            azure_config = self.config.get("config_list", [{}])[0]
-            
             # Split content into semantic chunks with token limit consideration
             md_chunks = self._split_into_semantic_chunks(markdown_content)
             orig_chunks = self._split_into_semantic_chunks(original_text)
@@ -223,9 +224,8 @@ ISSUES: [list any discrepancies found]
                             "content": validation_prompt
                         }
                     ],
-                    model=azure_config.get('model', 'o1'),
-                    max_completion_tokens=self.config.get('max_tokens', 40000),
-                    temperature=self.config.get('temperature', 0.7)
+                    model=self.model,  # Only need model parameter for Azure OpenAI
+                    max_tokens=self.max_tokens
                 )
                 
                 if not response.choices:
