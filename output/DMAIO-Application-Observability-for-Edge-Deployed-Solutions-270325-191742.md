@@ -9,20 +9,9 @@ Date: **2025-03-26**
 - [x] Accepted
 - [ ] Deprecated
 
-### Decision
+## Context
 
-Based on the criteria, OpenTelemetry is recommended as the preferred technology. OpenTelemetry provides the capability to queue messages in memory or on a file system to handle network interruptions between the edge and Azure, ensuring reliable telemetry transport. Furthermore, OpenTelemetry offers flexibility in filtering metrics, logs, and traces, optimizing data transmission by selectively sending specific telemetry types and thereby reducing outbound network traffic from the edge. Lastly, it should be noted that Microsoft recommends using the OpenTelemetry Collector as a data processing pipeline and is committed to using OpenTelemetry going forwards. You can learn more about this partnership here: [Application Insights OpenTelemetry data collection - Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-overview?tabs=aspnetcore)
-
-### Assessment Criteria
-
-1. It's crucial to account for periodic network interruption between edge systems and the cloud.
-2. Bandwidth limitations: our solution should judiciously transmit telemetry to the cloud.
-3. The system should offer workload visibility with minimal configuration.
-4. The observability system should have the capability to enrich the telemetry for improved consolidation in Log Analytics and Grafana.
-
-## Overview
-
-In modern distributed systems, observability is crucial for maintaining the health, performance, and reliability of edge-deployed solutions. This document outlines design choices for implementing observability at the edge, and addresses the following business objectives:
+In modern distributed systems, observability is crucial for maintaining the health, performance, and reliability of edge-deployed solutions. This document outlines design choices for implementing observability at the edge, addressing the following business objectives:
 
 - **Proactive Issue Detection and Easier Root Cause Analysis**: The observability platform will enable the identification and resolution of potential issues before they impact users. By quickly pinpointing the root cause of problems, downtime can be minimized, ensuring that service level objectives (SLOs) and service level indicators (SLIs) are consistently met for edge-deployed solutions.
 - **Informed Decision-Making**: By leveraging metrics, logs, and traces collected from edge devices, stakeholders can make data-driven decisions regarding system improvements and resource allocation.
@@ -31,6 +20,30 @@ In modern distributed systems, observability is crucial for maintaining the heal
 - **Compatibility with Key Technologies**: Ensure the proposed solution is compatible with Stack HCI, Kubernetes, GitOps-based fleet management, and aligned with Microsoft's observability tech stack strategy.
 - **Optimal Data Flow from Edge to Cloud**: As edge might be bandwidth constrained, optimize the flow of the telemetry from edge to observability platform.
 - **Offline Capabilities**: The observability platform should be resilient to network outages. It must have the capability to automatically resume data collection and transmission once network connectivity is restored, ensuring no critical data is lost during downtime.
+
+## Decision drivers
+
+- **Proactive Issue Detection and Easier Root Cause Analysis**
+- **Informed Decision-Making**
+- **Improved Operational Efficiency**
+- **Integration of Deployment Components**
+- **Compatibility with Key Technologies**
+- **Optimal Data Flow from Edge to Cloud**
+- **Offline Capabilities**
+
+## Considered options
+
+- **Azure Monitor Container Insights**: A first-party solution from Microsoft that collects telemetry from edge containers systems and delivers to portfolio of services inside Azure Monitor depending on the type of signal.
+- **OpenTelemetry Collector**: A vendor-agnostic open-source component designed to collect, process, and export telemetry data.
+- **Azure Monitor Edge Pipeline (preview)**: A first-party solution from Microsoft for building data ingestion pipelines. Very similar to OpenTelemetry Collector. This product is NOT considered due to its preview status.
+
+## Decision Conclusion
+
+Based on the criteria, OpenTelemetry is recommended as the preferred technology. OpenTelemetry provides the capability to queue messages in memory or on a file system to handle network interruptions between the edge and Azure, ensuring reliable telemetry transport. Furthermore, OpenTelemetry offers flexibility in filtering metrics, logs, and traces, optimizing data transmission by selectively sending specific telemetry types and thereby reducing outbound network traffic from the edge. Lastly, it should be noted that Microsoft recommends using the OpenTelemetry Collector as a data processing pipeline and is committed to using OpenTelemetry going forwards.
+
+## Consequences
+
+The use of OpenTelemetry will require the team to gain expertise in its administration and optimization. Additionally, existing systems and applications will need to be integrated with OpenTelemetry.
 
 ### Background
 
@@ -50,7 +63,15 @@ For more information on these pillars and differences between metrics, traces, a
 
 In an edge system, the ability to send telemetry to the cloud for analysis requires 1. instrumented systems and 2. an agent that facilitates gathering and transmitting telemetry data to the cloud.
 
+![Anatomy Observable System](images/Anatomy_Observable_System.png)
+
 [Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/overview) is the umbrella term for a range of products that provide instrumentation, transportation, storage, alerting, and analysis capabilities.
+
+![Azure Monitor](images/Azure_Monitor_System.png)
+
+- Credits
+
+[Azure Monitor Overview](https://learn.microsoft.com/en-us/azure/azure-monitor/overview)
 
 ---
 
@@ -74,24 +95,22 @@ For sending telemetry back to cloud, the following options were evaluated:
 
 A data platform is used for aggregating, analyzing, and visualizing telemetry data to gain insights into system performance, health, and operational efficiency.
 
-| **Description**         | **Metrics** | **Logs** | **Traces** |
-|--------------------------|-------------|----------|------------|
-| Existing dashboards      | Yes         | Yes      | Yes        |
-| Sharing dashboards       | Yes         | No       | Yes        |
-| Existing dashboards and data source integration | Out-of-the-box and public GitHub templates and reports. Limited to Azure Monitor. | Limited to Azure Monitor. | Can connect to various data sources including relational and timeseries databases. Grafana has popular plugins and dashboard templates for application performance monitoring (APM). |
-
----
-
-## Visualization
-
-### Overview of Visualization Platforms
-
 | **Platform**             | **Description**                                           | **Metrics** | **Logs** | **Traces** |
 |--------------------------|-----------------------------------------------------------|-------------|----------|------------|
 | Azure Monitor Metrics    | Time-series database optimized for analyzing time-stamped data. | Yes         | No       | No         |
 | Azure Managed Prometheus | A PromQL interface on top of Azure Monitor Metrics.       | Yes         | No       | No         |
 | Log Analytics            | Provides a powerful analysis engine and rich query language KQL. | Yes         | Yes      | No         |
 | Application Insights     | Helps developers with correlation.                        | Yes         | Yes      | Yes        |
+
+## Visualization
+
+### Overview of Visualization Platforms
+
+| **Description**         | **Metrics** | **Logs** | **Traces** |
+|--------------------------|-------------|----------|------------|
+| Existing dashboards      | Yes         | Yes      | Yes        |
+| Sharing dashboards       | Yes         | No       | Yes        |
+| Existing dashboards and data source integration | Out-of-the-box and public GitHub templates and reports. Limited to Azure Monitor. | Limited to Azure Monitor. | Can connect to various data sources including relational and timeseries databases. Grafana has popular plugins and dashboard templates for application performance monitoring (APM). |
 
 A detailed comparison can be found here: [Azure Monitor best practices - Analysis and visualizations - Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/best-practices-analysis)
 
@@ -112,6 +131,8 @@ A detailed comparison can be found here: [Azure Monitor best practices - Analysi
 ---
 
 ## OpenTelemetry Collector Pipeline
+
+In [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/), receivers are components that collect telemetry data from various sources, processors are responsible for transforming, filtering, and enriching the collected data, and exporters send the processed telemetry data to designated backends or storage systems.
 
 Credits: [OpenTelemetry Collector Documentation](https://opentelemetry.io/docs/collector/)
 
