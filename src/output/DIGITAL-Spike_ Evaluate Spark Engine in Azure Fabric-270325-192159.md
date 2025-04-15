@@ -493,9 +493,3 @@ A mid-sized enterprise implementing Microsoft Fabric with mixed workload pattern
 7. [Deployment Pipelines Process](https://learn.microsoft.com/en-us/fabric/cicd/deployment-pipelines/understand-deployment-process)
 8. [Buy a Microsoft Fabric Subscription](https://learn.microsoft.com/en-us/fabric/enterprise/buy-subscription)
 9. [Capacity Planning Guide](https://learn.microsoft.com/en-us/fabric/enterprise/capacity-planning)
-
-## Images
-
-![Diagram showing the execution flow of Spark jobs in Azure Fabric](../output/images/image_1_1.png)
-
-![Dashboard interface displaying real-time performance metrics for Spark clusters](../output/images/image_3_1.png)
