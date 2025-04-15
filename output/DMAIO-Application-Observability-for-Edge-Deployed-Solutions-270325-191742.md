@@ -106,11 +106,13 @@ A data platform is used for aggregating, analyzing, and visualizing telemetry da
 
 ### Overview of Visualization Platforms
 
-| **Description**         | **Metrics** | **Logs** | **Traces** |
-|--------------------------|-------------|----------|------------|
-| Existing dashboards      | Yes         | Yes      | Yes        |
-| Sharing dashboards       | Yes         | No       | Yes        |
-| Existing dashboards and data source integration | Out-of-the-box and public GitHub templates and reports. Limited to Azure Monitor. | Limited to Azure Monitor. | Can connect to various data sources including relational and timeseries databases. Grafana has popular plugins and dashboard templates for application performance monitoring (APM). |
+| **Description**         | **Workbooks** | **Dashboard** | **Grafana** | **Power BI** |
+|--------------------------|-------------|----------|------------|------------------|
+| Existing dashboards      | Yes         |    -     | Yes        | Yes              |
+| Sharing dashboards       | Yes         | No       | Yes        | Yes              |
+| Existing dashboards and data source integration | Out-of-the-box and public GitHub templates and reports. Limited to Azure Monitor. | Limited to Azure Monitor. | Can connect to various data sources including relational and timeseries databases. Grafana has popular plugins and dashboard templates for application performance monitoring (APM). | Integrate data from multiple data source|
+|  Prometheus support |No but integration with Azure Monitor Metrics enabled it to query Prometheus metrics.| - | Yes | - |
+|  Realtime | Yes | No | Yes | No |
 
 A detailed comparison can be found here: [Azure Monitor best practices - Analysis and visualizations - Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/best-practices-analysis)
 
