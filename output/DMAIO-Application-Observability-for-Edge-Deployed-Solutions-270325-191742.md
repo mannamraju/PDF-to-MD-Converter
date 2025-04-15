@@ -1,5 +1,25 @@
 # Application Observability for Edge-Deployed Solutions
 
+Date: **2025-03-26**
+
+## Status
+
+- [ ] Draft
+- [ ] Proposed
+- [x] Accepted
+- [ ] Deprecated
+
+### Decision
+
+Based on the criteria, OpenTelemetry is recommended as the preferred technology. OpenTelemetry provides the capability to queue messages in memory or on a file system to handle network interruptions between the edge and Azure, ensuring reliable telemetry transport. Furthermore, OpenTelemetry offers flexibility in filtering metrics, logs, and traces, optimizing data transmission by selectively sending specific telemetry types and thereby reducing outbound network traffic from the edge. Lastly, it should be noted that Microsoft recommends using the OpenTelemetry Collector as a data processing pipeline and is committed to using OpenTelemetry going forwards. You can learn more about this partnership here: [Application Insights OpenTelemetry data collection - Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-overview?tabs=aspnetcore)
+
+### Assessment Criteria
+
+1. It's crucial to account for periodic network interruption between edge systems and the cloud.
+2. Bandwidth limitations: our solution should judiciously transmit telemetry to the cloud.
+3. The system should offer workload visibility with minimal configuration.
+4. The observability system should have the capability to enrich the telemetry for improved consolidation in Log Analytics and Grafana.
+
 ## Overview
 
 In modern distributed systems, observability is crucial for maintaining the health, performance, and reliability of edge-deployed solutions. This document outlines design choices for implementing observability at the edge, and addresses the following business objectives:
@@ -47,21 +67,6 @@ For sending telemetry back to cloud, the following options were evaluated:
 | Azure Monitor Container Insights      | Easy. Enabled as an extension.                                  | Supported in Azure only          | Automatically of predefined resources. [Collection rules can be configured as needed.] | Azure Monitor                |
 | OpenTelemetry Collector               | Medium. Deployed using GitOps-based workflow. Requires YAML     | Multi-cloud, on-premise, hybrid. | More flexibility. Manual or automatic instrumentation. [Vast array of open-source collectors available.] | Multiple backends including Application Insights, New Relic, ElasticSearch, Prometheus, etc. |
 | Azure Monitor Edge Pipeline (preview) | Not considered due to its preview status.                       | -                                | -                                             | -                            |
-
----
-
-## Recommendation
-
-### Assessment Criteria
-
-1. It's crucial to account for periodic network interruption between edge systems and the cloud.
-2. Bandwidth limitations: our solution should judiciously transmit telemetry to the cloud.
-3. The system should offer workload visibility with minimal configuration.
-4. The observability system should have the capability to enrich the telemetry for improved consolidation in Log Analytics and Grafana.
-
-### Result
-
-Based on the criteria, OpenTelemetry is recommended as the preferred technology. OpenTelemetry provides the capability to queue messages in memory or on a file system to handle network interruptions between the edge and Azure, ensuring reliable telemetry transport. Furthermore, OpenTelemetry offers flexibility in filtering metrics, logs, and traces, optimizing data transmission by selectively sending specific telemetry types and thereby reducing outbound network traffic from the edge. Lastly, it should be noted that Microsoft recommends using the OpenTelemetry Collector as a data processing pipeline and is committed to using OpenTelemetry going forwards. You can learn more about this partnership here: [Application Insights OpenTelemetry data collection - Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-overview?tabs=aspnetcore)
 
 ---
 
