@@ -4,10 +4,7 @@ A Python application that converts PDF documents to well-formatted Markdown usin
 
 ## Configuration
 
-The application uses Azure OpenAI services with the following configuration:
-- Model: o1
-- API Version: 2024-12-01-preview
-- Endpoint: https://maopenai050.openai.azure.com/
+The application uses Azure OpenAI services. A template of the configuration file (.conf) is provided in the repository but the values would have to be customized for your AI resources.  
 
 ## Dependencies
 
